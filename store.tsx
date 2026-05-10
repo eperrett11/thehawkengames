@@ -7,6 +7,7 @@ interface TournamentContextType {
   state: TournamentState;
   currentUser: Player | null;
   setCurrentUser: (user: Player | null) => void;
+  loginPlayer: (playerId: string, pin: string) => Promise<{ ok: boolean; error?: string }>;
   placeBet: (playerId: string, bettableItemId: string, optionId: string, amount: number) => Promise<void>;
   settleItem: (itemId: string, winnerOptionId: string, winningPlayerIds?: string[]) => Promise<void>;
   updateTeams: (teams: Team[]) => Promise<void>;
@@ -559,7 +560,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const refresh = () => init();
 
-  const saveState = async (newState: TournamentState) => {
+  const saveState = async (newState: TournamentState): Promise<TournamentState> => {
     setState(newState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
 
@@ -582,11 +583,16 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setCurrentUser(updatedUser);
           if (updatedUser) localStorage.setItem('hawken_user', JSON.stringify(updatedUser));
         }
+
+        return normalizedState;
       } catch (error) {
         console.warn('Supabase save failed.', error);
         window.alert('The shared tournament data changed before this save finished. Refresh and try again.');
+        throw error;
       }
     }
+
+    return newState;
   };
 
   const placeBet = async (playerId: string, itemId: string, optionId: string, amount: number) => {
@@ -622,6 +628,25 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       players,
       bets
     });
+  };
+
+  const loginPlayer = async (playerId: string, pin: string) => {
+    const player = state.players.find((entry) => entry.id === playerId);
+    if (!player) return { ok: false, error: 'Player not found' };
+    if (pin.length !== 4) return { ok: false, error: 'PIN must be 4 digits' };
+    if (player.pin && player.pin !== pin) return { ok: false, error: 'Incorrect PIN' };
+
+    const players = state.players.map((entry) => (
+      entry.id === playerId ? { ...entry, pin: entry.pin || pin } : entry
+    ));
+    const updatedPlayer = players.find((entry) => entry.id === playerId) || null;
+    if (!updatedPlayer) return { ok: false, error: 'Player not found' };
+
+    const confirmedState = await saveState({ ...state, players });
+    const confirmedUser = confirmedState.players.find((entry) => entry.id === playerId) || updatedPlayer;
+    setCurrentUser(confirmedUser);
+    localStorage.setItem('hawken_user', JSON.stringify(confirmedUser));
+    return { ok: true };
   };
 
   const settleItem = async (itemId: string, winnerOptionId: string, winningPlayerIds: string[] = []) => {
@@ -919,7 +944,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });
   };
   return (
-    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, saveMatchupSettings, voidEventBets, isLoading, refresh }}>
+    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, saveMatchupSettings, voidEventBets, isLoading, refresh }}>
       {children}
     </TournamentContext.Provider>
   );

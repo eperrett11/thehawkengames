@@ -1,16 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useTournament } from '../store';
-import { Player } from '../types';
 import HawkenLogo from './HawkenLogo';
 
-const STORAGE_KEY = 'hawken_games_v5';
-
 const Login: React.FC = () => {
-  const { state, setCurrentUser, refresh } = useTournament();
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const { state, loginPlayer } = useTournament();
+  const [selectedPlayerIdForPin, setSelectedPlayerIdForPin] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedFromDropdown = useMemo(
     () => state.players.find(p => p.id === selectedPlayerId) || null,
     [state.players, selectedPlayerId]
@@ -20,33 +18,19 @@ const Login: React.FC = () => {
     [state.players]
   );
 
-  const handleJoin = () => {
+  const selectedPlayer = state.players.find(p => p.id === selectedPlayerIdForPin) || null;
+
+  const handleJoin = async () => {
     if (!selectedPlayer) return;
     if (pin.length !== 4) {
       setError('PIN must be 4 digits');
       return;
     }
 
-    const player = state.players.find(p => p.id === selectedPlayer.id);
-    if (!player) {
-      setError('Player not found');
-      return;
-    }
-
-    if (player.pin && player.pin !== pin) {
-      setError('Incorrect PIN');
-      return;
-    }
-
-    const updatedPlayers = state.players.map(p => (
-      p.id === selectedPlayer.id ? { ...p, pin: p.pin || pin } : p
-    ));
-    const updatedPlayer = updatedPlayers.find(p => p.id === selectedPlayer.id) || null;
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, players: updatedPlayers }));
-    if (updatedPlayer) localStorage.setItem('hawken_user', JSON.stringify(updatedPlayer));
-    setCurrentUser(updatedPlayer);
-    refresh();
+    setIsSubmitting(true);
+    const result = await loginPlayer(selectedPlayer.id, pin);
+    setIsSubmitting(false);
+    if (!result.ok) setError(result.error || 'Unable to log in');
   };
 
   return (
@@ -78,7 +62,7 @@ const Login: React.FC = () => {
             </div>
 
             <button
-              onClick={() => selectedFromDropdown && setSelectedPlayer(selectedFromDropdown)}
+              onClick={() => selectedFromDropdown && setSelectedPlayerIdForPin(selectedFromDropdown.id)}
               disabled={!selectedFromDropdown}
               className={`w-full py-3 rounded-lg font-bold uppercase tracking-widest transition-all ${selectedFromDropdown ? 'bg-white text-black' : 'bg-slate-800 text-slate-500'}`}
             >
@@ -87,7 +71,7 @@ const Login: React.FC = () => {
           </div>
         ) : (
           <div className="animate-in slide-in-from-bottom-4 duration-300">
-            <button onClick={() => { setSelectedPlayer(null); setPin(''); setError(''); }} className="text-xs text-slate-500 font-bold uppercase mb-6 hover:text-white transition-colors flex items-center mx-auto">
+            <button onClick={() => { setSelectedPlayerIdForPin(''); setPin(''); setError(''); }} className="text-xs text-slate-500 font-bold uppercase mb-6 hover:text-white transition-colors flex items-center mx-auto">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
               Change Name
             </button>
@@ -111,10 +95,10 @@ const Login: React.FC = () => {
 
             <button
               onClick={handleJoin}
-              disabled={pin.length !== 4}
+              disabled={pin.length !== 4 || isSubmitting}
               className={`w-full py-4 rounded-lg font-bold uppercase tracking-widest transition-all ${pin.length === 4 ? 'bg-white text-black' : 'bg-slate-800 text-slate-500'}`}
             >
-              Enter Games
+              {isSubmitting ? 'Entering...' : 'Enter Games'}
             </button>
           </div>
         )}
