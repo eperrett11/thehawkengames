@@ -429,6 +429,10 @@ const Main: React.FC = () => {
               <p>
                 When the commissioner enters game results, betting bankrolls and leaderboards update automatically.
               </p>
+
+              <p>
+                Head over to the <span className="font-black text-white">Rules</span> tab to learn more about the events, scoring, and betting.
+              </p>
             </div>
 
             <button

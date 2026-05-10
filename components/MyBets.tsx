@@ -144,6 +144,16 @@ const MyBets: React.FC = () => {
 
   const openUserBets = userBets.filter((bet) => !bet.settled);
   const pastUserBets = userBets.filter((bet) => bet.settled);
+  const bettingTotals = pastUserBets.reduce(
+    (totals, bet) => {
+      if (bet.refunded) return totals;
+      if (bet.won) {
+        return { ...totals, won: totals.won + Math.max(0, bet.payout - bet.amount) };
+      }
+      return { ...totals, lost: totals.lost + bet.amount };
+    },
+    { won: 0, lost: 0 }
+  );
 
   const renderBetRows = (rows: UserBetRow[], emptyLabel: string, showResultBadge = false) => {
     if (rows.length === 0) {
@@ -212,6 +222,17 @@ const MyBets: React.FC = () => {
           <p className="text-[11px] leading-relaxed text-slate-400">
             Players start with a $0.00 bankroll. To fund betting, Venmo the commissioner. After payment is confirmed, the commissioner will add those funds to your account in the app.
           </p>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/8 px-4 py-3">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-400/80">Total Won</div>
+          <div className="mt-1 text-2xl font-black tracking-tight text-emerald-400">${bettingTotals.won.toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/15 bg-rose-500/8 px-4 py-3">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-rose-300/80">Total Lost</div>
+          <div className="mt-1 text-2xl font-black tracking-tight text-rose-300">${bettingTotals.lost.toFixed(2)}</div>
         </div>
       </section>
 
