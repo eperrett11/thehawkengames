@@ -242,6 +242,10 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
     return state.bettableItems.find((item) => item.eventId === eventId && item.matchupId === matchId && isResolvedBetItem(item.id));
   };
 
+  const getAnyMatchupBetItem = (eventId: string, matchId: string) => {
+    return state.bettableItems.find((item) => item.eventId === eventId && item.matchupId === matchId);
+  };
+
   const getEventBetItem = (eventId: string) => {
     return state.bettableItems.find((item) => item.eventId === eventId && !item.matchupId && isResolvedBetItem(item.id));
   };
@@ -387,6 +391,8 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
     const isFinished = !!match.winnerId;
     const highlightWinner = event?.status === EventStatus.COMPLETE;
     const betItem = getMatchupBetItem(eventId, match.id);
+    const potItem = betItem || getAnyMatchupBetItem(eventId, match.id);
+    const totalPot = potItem ? getBetItemPot(potItem.id) : 0;
 
     return (
       <div key={match.id} className={`rounded-2xl p-3 shadow-[0_18px_42px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-inset ${isFinished ? 'bg-slate-950/64 ring-white/[0.13]' : 'bg-[linear-gradient(145deg,rgba(51,65,85,0.54)_0%,rgba(15,23,42,0.48)_44%,rgba(2,6,23,0.44)_100%)] ring-white/[0.18]'} ${stacked ? 'min-h-0' : ''}`}>
@@ -394,6 +400,11 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
           <div className="text-[11px] uppercase font-black tracking-[0.16em] text-slate-400">
             {match.gameNumber ? `Game ${match.gameNumber}` : match.round}
           </div>
+          {potItem ? (
+            <div className="shrink-0 rounded-full border border-emerald-400/15 bg-emerald-400/8 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-300">
+              Total Pot ${totalPot.toFixed(2)}
+            </div>
+          ) : null}
         </div>
 
         <div className={isFinished ? 'opacity-95' : ''}>
