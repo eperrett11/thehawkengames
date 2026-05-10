@@ -343,7 +343,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
                 <div key={`${match.id}-${sideIndex}-${idx}`}>{member}</div>
               ))}
               {oddsStat ? (
-                <div className="mt-6 border-t border-white/12 pt-3 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
+                <div className="mt-3 border-t border-white/12 pt-2 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
                   <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
                   <span className="mx-1.5 text-white/25">|</span>
                   <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
@@ -376,7 +376,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
                     <div key={`${match.id}-${sideIndex}-${segment.teamId}-${idx}`}>{member}</div>
                   ))}
                   {oddsStat && segmentIndex === 0 ? (
-                    <div className="mt-6 border-t border-white/12 pt-3 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
+                    <div className="mt-3 border-t border-white/12 pt-2 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
                       <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
                       <span className="mx-1.5 text-white/25">|</span>
                       <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
@@ -407,8 +407,8 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
             {match.gameNumber ? `Game ${match.gameNumber}` : match.round}
           </div>
           {potItem ? (
-            <div className="shrink-0 rounded-full border border-emerald-400/15 bg-emerald-400/8 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-300">
-              Total Pot ${totalPot.toFixed(2)}
+            <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">
+              Total Pot <span className="text-emerald-300">${totalPot.toFixed(2)}</span>
             </div>
           ) : null}
         </div>
@@ -480,8 +480,8 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Participants</h4>
           {betItem ? (
-            <div className="shrink-0 rounded-full border border-emerald-400/15 bg-emerald-400/8 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-300">
-              Total Pot ${totalPot.toFixed(2)}
+            <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">
+              Total Pot <span className="text-emerald-300">${totalPot.toFixed(2)}</span>
             </div>
           ) : null}
         </div>
