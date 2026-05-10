@@ -10,6 +10,7 @@ interface ScheduleProps {
 }
 
 const PAIRED_ROUNDS = ['Quarterfinal', 'Semifinal', 'Final'];
+const BET_STAT_CLASS = 'mt-3 border-t border-white/12 pt-2 text-[9px] font-black uppercase leading-none tracking-[0.14em]';
 
 const formatBetLabel = (eventName: string, itemLabel: string) => {
   const gameMatch = itemLabel.match(/^Game\s+(\d+)$/i);
@@ -343,7 +344,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
                 <div key={`${match.id}-${sideIndex}-${idx}`}>{member}</div>
               ))}
               {oddsStat ? (
-                <div className="mt-3 border-t border-white/12 pt-2 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
+                <div className={BET_STAT_CLASS}>
                   <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
                   <span className="mx-1.5 text-white/25">|</span>
                   <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
@@ -376,7 +377,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
                     <div key={`${match.id}-${sideIndex}-${segment.teamId}-${idx}`}>{member}</div>
                   ))}
                   {oddsStat && segmentIndex === 0 ? (
-                    <div className="mt-3 border-t border-white/12 pt-2 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
+                    <div className={BET_STAT_CLASS}>
                       <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
                       <span className="mx-1.5 text-white/25">|</span>
                       <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
@@ -521,7 +522,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
                     ))}
                   </div>
                   {oddsStat ? (
-                    <div className="mt-3 border-t border-white/12 pt-2 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
+                    <div className={BET_STAT_CLASS}>
                       <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
                       <span className="mx-1.5 text-white/25">|</span>
                       <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
