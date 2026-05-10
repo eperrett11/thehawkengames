@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { TournamentState, Player, Team, Event, BettableItem, Bet, EventStatus, Matchup, EventType } from './types';
 import { PLAYER_DEFS, TEAMS_INIT, EVENTS_DATA } from './constants';
+import { commitRemoteTournamentState, isBackendEnabled, loadRemoteTournamentState, seedRemoteTournamentState } from './backend';
 
 interface TournamentContextType {
   state: TournamentState;
@@ -483,8 +484,10 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [state, setState] = useState<TournamentState>({ players: [], teams: [], events: [], bettableItems: [], bets: [] });
   const [currentUser, setCurrentUser] = useState<Player | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const remoteRevisionRef = useRef<number | null>(null);
 
-  const init = useCallback(() => {
+  const init = useCallback(async () => {
+    setIsLoading(true);
     const saved = localStorage.getItem(STORAGE_KEY);
     let activeState: TournamentState;
 
@@ -513,6 +516,26 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem(PAIRED_LAYOUT_MODEL_KEY, 'ready');
     }
 
+    if (isBackendEnabled) {
+      try {
+        const remoteState = await loadRemoteTournamentState();
+
+        if (remoteState) {
+          activeState = normalizeState(remoteState.state);
+          remoteRevisionRef.current = remoteState.revision;
+        } else {
+          const seededState = await seedRemoteTournamentState(activeState);
+          activeState = normalizeState(seededState.state);
+          remoteRevisionRef.current = seededState.revision;
+        }
+
+        setState(activeState);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(activeState));
+      } catch (error) {
+        console.warn('Supabase load failed. Falling back to local state.', error);
+      }
+    }
+
     const savedUser = localStorage.getItem('hawken_user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser) as Player;
@@ -536,7 +559,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const refresh = () => init();
 
-  const saveState = (newState: TournamentState) => {
+  const saveState = async (newState: TournamentState) => {
     setState(newState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
 
@@ -544,6 +567,25 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const updatedUser = newState.players.find((player) => player.id === currentUser.id) || null;
       setCurrentUser(updatedUser);
       if (updatedUser) localStorage.setItem('hawken_user', JSON.stringify(updatedUser));
+    }
+
+    if (isBackendEnabled && remoteRevisionRef.current !== null) {
+      try {
+        const committedState = await commitRemoteTournamentState(newState, remoteRevisionRef.current);
+        const normalizedState = normalizeState(committedState.state);
+        remoteRevisionRef.current = committedState.revision;
+        setState(normalizedState);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedState));
+
+        if (currentUser) {
+          const updatedUser = normalizedState.players.find((player) => player.id === currentUser.id) || null;
+          setCurrentUser(updatedUser);
+          if (updatedUser) localStorage.setItem('hawken_user', JSON.stringify(updatedUser));
+        }
+      } catch (error) {
+        console.warn('Supabase save failed.', error);
+        window.alert('The shared tournament data changed before this save finished. Refresh and try again.');
+      }
     }
   };
 
@@ -575,7 +617,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       timestamp: Date.now()
     });
 
-    saveState({
+    await saveState({
       ...state,
       players,
       bets
@@ -688,13 +730,13 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       event.winnerTeamIds = [winnerOptionId];
     }
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const updateTeams = async (teams: Team[]) => {
     const resetPlayers = state.players.map((player) => ({ ...player, balance: INITIAL_BALANCE }));
     const rebuiltState = createInitialState(resetPlayers, teams);
-    saveState(rebuiltState);
+    await saveState(rebuiltState);
   };
 
   const addFunds = async (playerId: string, amount: number) => {
@@ -709,7 +751,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ))
     };
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const setEventVisibility = async (eventId: string, isVisible: boolean) => {
@@ -720,7 +762,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ))
     };
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const setEventDay = async (eventId: string, day: 1 | 2) => {
@@ -734,7 +776,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ))
     };
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const saveSportsSettings = async (settings: { id: string; day: 1 | 2; isVisible: boolean }[]) => {
@@ -751,7 +793,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       })
     };
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const adjustBankroll = async (playerId: string, amount: number) => {
@@ -772,7 +814,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ))
     };
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const resetPlayerPin = async (playerId: string) => {
@@ -783,7 +825,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ))
     };
 
-    saveState(newState);
+    await saveState(newState);
   };
 
   const voidEventBets = async (eventId: string) => {
@@ -808,7 +850,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       };
     });
 
-    saveState({ ...state, players, bets });
+    await saveState({ ...state, players, bets });
   };
 
   const saveMatchupSettings = async (settings: { eventId: string; matchups: { matchupId: string; sides: { teamId: string; playerIds: string[] }[] }[] }[]) => {
@@ -874,7 +916,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { ...item, options, winnerOptionId: undefined, status: isOpening && readyParticipants ? 'OPEN' : 'LOCKED' };
     });
 
-    saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });
+    await saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });
   };
   return (
     <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, saveMatchupSettings, voidEventBets, isLoading, refresh }}>
