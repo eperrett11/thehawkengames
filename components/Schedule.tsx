@@ -254,21 +254,27 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
     .filter((bet) => bet.bettableItemId === itemId && !bet.refunded && !bet.voided)
     .reduce((sum, bet) => sum + bet.amount, 0);
 
-  const getScheduleOddsStat = (item: BettableItem | undefined, match: Matchup, sideIndex: 0 | 1) => {
+  const getBetOptionStat = (item: BettableItem | undefined, optionId: string) => {
     if (!item) return null;
 
     const itemBets = state.bets.filter((bet) => bet.bettableItemId === item.id && !bet.refunded && !bet.voided);
     const totalPool = itemBets.reduce((sum, bet) => sum + bet.amount, 0);
+    const optionPool = itemBets
+      .filter((bet) => bet.optionId === optionId)
+      .reduce((sum, bet) => sum + bet.amount, 0);
+    const percentage = totalPool > 0 ? (optionPool / totalPool) * 100 : 0;
+
+    return { optionPool, percentage, totalPool };
+  };
+
+  const getScheduleOddsStat = (item: BettableItem | undefined, match: Matchup, sideIndex: 0 | 1) => {
+    if (!item) return null;
+
     const sideParticipantId = match.participantIds?.[sideIndex] || '';
     const option = item.options.find((entry) => entry.id === sideParticipantId);
     if (!option) return null;
 
-    const optionPool = itemBets
-      .filter((bet) => bet.optionId === option.id)
-      .reduce((sum, bet) => sum + bet.amount, 0);
-    const percentage = totalPool > 0 ? (optionPool / totalPool) * 100 : 0;
-
-    return { optionPool, percentage };
+    return getBetOptionStat(item, option.id);
   };
 
   const renderScheduleBetButton = (itemId?: string) => {
@@ -467,10 +473,18 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
 
   const renderAggregateParticipants = (event: typeof dayEvents[number]) => {
     const betItem = getEventBetItem(event.id);
+    const totalPot = betItem ? getBetItemPot(betItem.id) : 0;
 
     return (
       <section className="space-y-3">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Participants</h4>
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Participants</h4>
+          {betItem ? (
+            <div className="shrink-0 rounded-full border border-emerald-400/15 bg-emerald-400/8 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-300">
+              Total Pot ${totalPot.toFixed(2)}
+            </div>
+          ) : null}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           {state.teams.map((team) => {
             const members = team.playerIds
@@ -478,6 +492,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
               .filter(Boolean);
             const isWinner = event.status === EventStatus.COMPLETE && ((event.winnerTeamIds || []).includes(team.id) || event.winnerTeamId === team.id);
             const isLoser = event.status === EventStatus.COMPLETE && !isWinner;
+            const oddsStat = getBetOptionStat(betItem, team.id);
 
             return (
               <div
@@ -505,6 +520,13 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
                       <div key={`${team.id}-${idx}`}>{member}</div>
                     ))}
                   </div>
+                  {oddsStat ? (
+                    <div className="mt-6 border-t border-white/12 pt-3 text-[9px] font-black uppercase leading-none tracking-[0.14em]">
+                      <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
+                      <span className="mx-1.5 text-white/25">|</span>
+                      <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
