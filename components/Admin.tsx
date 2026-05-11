@@ -116,6 +116,7 @@ const Admin: React.FC = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [pinResetPlayerId, setPinResetPlayerId] = useState('');
   const [openScoreEventId, setOpenScoreEventId] = useState<string | null>(null);
+  const [fundingPlayerId, setFundingPlayerId] = useState<string | null>(null);
 
   const isTeamsDirty = useMemo(() => (
     JSON.stringify(editingTeams.map((team) => ({ id: team.id, playerIds: team.playerIds }))) !==
@@ -309,15 +310,28 @@ const Admin: React.FC = () => {
   const handleAddFunds = async (playerId: string) => {
     const raw = fundAmounts[playerId] || '';
     const amount = Number(raw);
+    const player = state.players.find((entry) => entry.id === playerId);
 
     if (!Number.isFinite(amount) || amount < 20) {
       alert('Minimum buy in is $20.');
       return;
     }
 
-    if (window.confirm(`Add $${amount.toFixed(2)} to this bankroll?`)) {
+    if (!player) {
+      alert('Player not found.');
+      return;
+    }
+
+    try {
+      setFundingPlayerId(playerId);
       await addFunds(playerId, amount);
       setFundAmounts((current) => ({ ...current, [playerId]: '' }));
+      alert(`Added $${amount.toFixed(2)} to ${player.name}.`);
+    } catch (error) {
+      console.warn('Add funds failed.', error);
+      alert('Funds were not added. Refresh and try again.');
+    } finally {
+      setFundingPlayerId(null);
     }
   };
 
@@ -1057,10 +1071,11 @@ const Admin: React.FC = () => {
                   />
                 </div>
                 <button
-                  onClick={() => handleAddFunds(player.id)}
-                  className="rounded-lg bg-emerald-500 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black"
+                  onClick={() => void handleAddFunds(player.id)}
+                  disabled={fundingPlayerId === player.id}
+                  className="rounded-lg bg-emerald-500 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black disabled:cursor-wait disabled:bg-slate-700 disabled:text-slate-400"
                 >
-                  Add Funds
+                  {fundingPlayerId === player.id ? 'Adding' : 'Add Funds'}
                 </button>
                 <button
                   onClick={() => openBankrollCorrection(player.id)}
