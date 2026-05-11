@@ -16,6 +16,7 @@ const ADMIN_SESSION_KEY = 'hawken_admin_authed';
 const WELCOME_DISMISSED_PREFIX = 'hawken_welcome_dismissed_';
 const ACTIVE_TAB_PREFIX = 'hawken_active_tab_';
 const PLAYER_TABS = ['Schedule', 'Teams', 'Leaderboard', 'Betting', 'Rules'];
+const LIVE_TABS = ['Schedule', 'Teams', 'Leaderboard', 'Rules'];
 const PLAYER_CARD_PLACEHOLDER_SRC = '/images/player-card-placeholder.jpg';
 const PLAYER_CARD_SRC: Record<string, string> = {
   Andrew: '/images/playercards/andrew.jpg',
@@ -103,7 +104,7 @@ const Main: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!currentUser || pathname === '/admin') {
+    if (!currentUser || pathname === '/admin' || pathname === '/live') {
       setShowWelcome(false);
       setShowIntroCard(false);
       setIsIntroCardOpen(false);
@@ -114,7 +115,7 @@ const Main: React.FC = () => {
   }, [currentUser, pathname]);
 
   useEffect(() => {
-    if (!currentUser || pathname === '/admin') return;
+    if (!currentUser || pathname === '/admin' || pathname === '/live') return;
 
     const savedTab = localStorage.getItem(`${ACTIVE_TAB_PREFIX}${currentUser.id}`);
     if (savedTab && PLAYER_TABS.includes(savedTab)) {
@@ -123,7 +124,7 @@ const Main: React.FC = () => {
   }, [currentUser?.id, pathname]);
 
   useEffect(() => {
-    if (!currentUser || pathname === '/admin' || !PLAYER_TABS.includes(activeTab)) return;
+    if (!currentUser || pathname === '/admin' || pathname === '/live' || !PLAYER_TABS.includes(activeTab)) return;
 
     localStorage.setItem(`${ACTIVE_TAB_PREFIX}${currentUser.id}`, activeTab);
   }, [activeTab, currentUser, pathname]);
@@ -135,9 +136,16 @@ const Main: React.FC = () => {
     return () => window.cancelAnimationFrame(raf);
   }, [showIntroCard]);
 
+  useEffect(() => {
+    if (pathname === '/live' && !LIVE_TABS.includes(activeTab)) {
+      setActiveTab('Schedule');
+    }
+  }, [activeTab, pathname]);
+
   const isAdminPath = pathname === '/admin';
+  const isLivePath = pathname === '/live';
   const isCommish = isAdminPath && isAdminAuthed;
-  const isAuthScreen = !currentUser && !isAdminPath;
+  const isAuthScreen = !currentUser && !isAdminPath && !isLivePath;
 
   if (isLoading) return (
     <div className="h-screen flex items-center justify-center bg-slate-950 text-slate-400 px-4">
@@ -182,13 +190,13 @@ const Main: React.FC = () => {
   const renderContent = () => {
     if (isAdminPath && !isAdminAuthed) return <AdminGate onSuccess={() => setIsAdminAuthed(true)} />;
     if (isCommish) return <Admin />;
-    if (!currentUser) return <Login />;
+    if (!currentUser && !isLivePath) return <Login />;
 
     switch (activeTab) {
-      case 'Schedule': return <Schedule onShowRules={handleShowRules} />;
+      case 'Schedule': return <Schedule onShowRules={handleShowRules} readOnly={isLivePath} />;
       case 'Teams': return <Teams />;
       case 'Leaderboard': return <Leaderboard />;
-      case 'Betting': return <MyBets />;
+      case 'Betting': return isLivePath ? <Schedule onShowRules={handleShowRules} readOnly /> : <MyBets />;
       case 'Rules': {
         const selectedRule = selectedRuleSport ? FORMAT_RULES[selectedRuleSport] : null;
         const visibleSportNames = new Set(state.events.filter((event) => event.isVisible).map((event) => event.id === 'e9' ? 'baseball - HR derby' : event.name));
@@ -373,13 +381,13 @@ const Main: React.FC = () => {
           </div>
         );
       }
-      default: return <Schedule onShowRules={handleShowRules} />;
+      default: return <Schedule onShowRules={handleShowRules} readOnly={isLivePath} />;
     }
   };
 
   return (
     <div className="flex h-[100svh] flex-col max-w-screen-sm mx-auto bg-slate-950 shadow-2xl">
-      {currentUser && !isCommish && !isAdminPath && (
+      {(currentUser || isLivePath) && !isCommish && !isAdminPath && (
         <header className="py-3 px-3 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-950/80 backdrop-blur-md z-50">
           <div className="flex items-center gap-1 min-w-0">
             <BirdIcon size={40} className="mr-2 ml-1" />
@@ -388,15 +396,22 @@ const Main: React.FC = () => {
               <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 whitespace-nowrap ml-1.5">Invitational Tournament</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab('Betting')}
-            className="pl-3 shrink-0 flex flex-col items-center text-center transition-transform active:scale-95"
-            aria-label="Open betting tab"
-          >
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">My Bankroll</div>
-            <div className="text-lg sm:text-xl font-black text-emerald-400 leading-tight">${currentUser.balance.toFixed(2)}</div>
-          </button>
+          {isLivePath ? (
+            <div className="pl-3 shrink-0 text-right">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Live</div>
+              <div className="text-lg sm:text-xl font-black text-emerald-400 leading-tight">Viewer</div>
+            </div>
+          ) : currentUser ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab('Betting')}
+              className="pl-3 shrink-0 flex flex-col items-center text-center transition-transform active:scale-95"
+              aria-label="Open betting tab"
+            >
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">My Bankroll</div>
+              <div className="text-lg sm:text-xl font-black text-emerald-400 leading-tight">${currentUser.balance.toFixed(2)}</div>
+            </button>
+          ) : null}
         </header>
       )}
 
@@ -404,8 +419,8 @@ const Main: React.FC = () => {
         {renderContent()}
       </main>
 
-      {currentUser && !isCommish && !isAdminPath && (
-        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {(currentUser || isLivePath) && !isCommish && !isAdminPath && (
+        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} tabs={isLivePath ? LIVE_TABS : PLAYER_TABS} />
       )}
 
       {showWelcome && currentUser && !isCommish && !isAdminPath && (

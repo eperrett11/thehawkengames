@@ -7,6 +7,7 @@ import BettingPanel from './BettingPanel';
 
 interface ScheduleProps {
   onShowRules: (sport: string) => void;
+  readOnly?: boolean;
 }
 
 const PAIRED_ROUNDS = ['Quarterfinal', 'Semifinal', 'Final'];
@@ -34,7 +35,7 @@ const formatBetLabel = (eventName: string, itemLabel: string) => {
   return itemLabel;
 };
 
-const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
+const Schedule: React.FC<ScheduleProps> = ({ onShowRules, readOnly = false }) => {
   const { state, currentUser } = useTournament();
   const [activeDay, setActiveDay] = useState<1 | 2>(1);
   const [openEventIds, setOpenEventIds] = useState<Set<string>>(new Set());
@@ -279,6 +280,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
   };
 
   const renderScheduleBetButton = (itemId?: string) => {
+    if (readOnly) return null;
     if (!itemId) return null;
     const item = state.bettableItems.find((entry) => entry.id === itemId);
     const isBettingLocked = item?.status !== 'OPEN' || item?.bettingLocked;
@@ -692,7 +694,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
         )}
       </div>
 
-      {activeBetItemId && (() => {
+      {!readOnly && activeBetItemId && (() => {
         const item = state.bettableItems.find((entry) => entry.id === activeBetItemId);
         const event = state.events.find((entry) => entry.id === item?.eventId);
         if (!item || !event) return null;
