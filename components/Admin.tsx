@@ -104,7 +104,7 @@ const createMatchupDrafts = (state: TournamentState): MatchupDraftMap => {
 };
 
 const Admin: React.FC = () => {
-  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, saveMatchupSettings } = useTournament();
+  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings } = useTournament();
   const [view, setView] = useState<AdminView>('Events');
   const [editingTeams, setEditingTeams] = useState<Team[]>(state.teams);
   const [selectedWinner, setSelectedWinner] = useState<{ itemId: string; optId: string } | null>(null);
@@ -151,6 +151,11 @@ const Admin: React.FC = () => {
       event.isVisible
       && event.status === EventStatus.COMPLETE
     )),
+    [state.events]
+  );
+
+  const bettingControlEvents = useMemo(
+    () => state.events.filter((event) => event.isVisible && event.status !== EventStatus.COMPLETE),
     [state.events]
   );
 
@@ -254,6 +259,18 @@ const Admin: React.FC = () => {
 
     alert('Sports settings updated.');
     return true;
+  };
+
+  const handleSetEventBettingLocked = async (eventId: string, bettingLocked: boolean) => {
+    const event = state.events.find((entry) => entry.id === eventId);
+    if (!event) return;
+
+    const message = bettingLocked
+      ? `Lock betting for ${event.name}? Players will not be able to place new bets for this event, but existing bets stay active.`
+      : `Reopen betting for ${event.name}? Only do this if the event has not started.`;
+
+    if (!window.confirm(message)) return;
+    await setEventBettingLocked(eventId, bettingLocked);
   };
 
   const handleSettle = async () => {
@@ -879,6 +896,47 @@ const Admin: React.FC = () => {
         <MatchupsAdmin />
       ) : view === 'Events' ? (
         <div className="space-y-8">
+          <section className="space-y-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Betting Locks</div>
+              <p className="mt-1 text-[11px] text-slate-500">Lock betting when an event is starting. Results can still be entered after betting is locked.</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {bettingControlEvents.map((event) => {
+                const eventItems = state.bettableItems.filter((item) => item.eventId === event.id);
+                const openMarkets = eventItems.filter((item) => item.status === 'OPEN' && !item.bettingLocked && !event.bettingLocked).length;
+                const activeBets = state.bets.filter((bet) => eventItems.some((item) => item.id === bet.bettableItemId) && !bet.refunded && !bet.voided).length;
+                const isLocked = !!event.bettingLocked;
+
+                return (
+                  <div key={event.id} className={`rounded-2xl border p-4 ${isLocked ? 'border-amber-500/25 bg-amber-500/10' : 'border-slate-800 bg-slate-900'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-black uppercase text-white">{event.name}</div>
+                        <div className={`mt-1 text-[10px] font-black uppercase tracking-[0.14em] ${isLocked ? 'text-amber-300' : 'text-emerald-400'}`}>
+                          {isLocked ? 'Betting Locked' : `${openMarkets} open market${openMarkets === 1 ? '' : 's'}`}
+                        </div>
+                        <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{activeBets} active bet{activeBets === 1 ? '' : 's'}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleSetEventBettingLocked(event.id, !isLocked)}
+                        className={`shrink-0 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] ${
+                          isLocked
+                            ? 'border border-slate-700 bg-slate-950 text-slate-300'
+                            : 'bg-amber-500 text-black'
+                        }`}
+                      >
+                        {isLocked ? 'Reopen' : 'Lock'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           <section className="space-y-3">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Ready To Score</div>

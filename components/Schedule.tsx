@@ -280,6 +280,9 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
 
   const renderScheduleBetButton = (itemId?: string) => {
     if (!itemId) return null;
+    const item = state.bettableItems.find((entry) => entry.id === itemId);
+    const event = state.events.find((entry) => entry.id === item?.eventId);
+    const isBettingLocked = item?.status !== 'OPEN' || item?.bettingLocked || event?.bettingLocked;
     const hasUserBet = !!currentUser && state.bets.some((bet) => bet.playerId === currentUser.id && bet.bettableItemId === itemId && !bet.refunded && !bet.voided);
     const latestPlayer = currentUser ? state.players.find((player) => player.id === currentUser.id) || currentUser : null;
     const hasFunds = (latestPlayer?.balance || 0) >= 5;
@@ -289,16 +292,18 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          if (!hasUserBet) setActiveBetItemId(itemId);
+          if (!hasUserBet && !isBettingLocked) setActiveBetItemId(itemId);
         }}
-        disabled={hasUserBet}
+        disabled={hasUserBet || isBettingLocked}
         className={`mx-auto mt-3 flex w-fit min-w-[112px] justify-center rounded-lg border px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-all active:scale-[0.98] disabled:cursor-not-allowed ${
           hasUserBet
             ? 'border-emerald-500/25 bg-transparent text-emerald-400'
+            : isBettingLocked
+              ? 'border-slate-700 bg-transparent text-slate-500'
             : 'border-white/20 bg-white/[0.03] text-white/90 shadow-[0_0_18px_rgba(255,255,255,0.04)]'
         }`}
       >
-        {hasUserBet ? 'Bet Wagered' : 'Place Bet'}
+        {hasUserBet ? 'Bet Wagered' : isBettingLocked ? 'Betting Locked' : 'Place Bet'}
       </button>
     );
   };

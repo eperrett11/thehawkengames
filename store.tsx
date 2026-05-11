@@ -8,7 +8,7 @@ interface TournamentContextType {
   currentUser: Player | null;
   setCurrentUser: (user: Player | null) => void;
   loginPlayer: (playerId: string, pin: string) => Promise<{ ok: boolean; error?: string }>;
-  placeBet: (playerId: string, bettableItemId: string, optionId: string, amount: number) => Promise<void>;
+  placeBet: (playerId: string, bettableItemId: string, optionId: string, amount: number) => Promise<boolean>;
   settleItem: (itemId: string, winnerOptionId: string, winningPlayerIds?: string[]) => Promise<void>;
   updateTeams: (teams: Team[]) => Promise<void>;
   addFunds: (playerId: string, amount: number) => Promise<void>;
@@ -17,6 +17,7 @@ interface TournamentContextType {
   setEventVisibility: (eventId: string, isVisible: boolean) => Promise<void>;
   setEventDay: (eventId: string, day: 1 | 2) => Promise<void>;
   saveSportsSettings: (settings: { id: string; day: 1 | 2; isVisible: boolean }[]) => Promise<void>;
+  setEventBettingLocked: (eventId: string, bettingLocked: boolean) => Promise<void>;
   saveMatchupSettings: (settings: { eventId: string; matchups: { matchupId: string; sides: { teamId: string; playerIds: string[] }[] }[] }[]) => Promise<void>;
   voidEventBets: (eventId: string) => Promise<void>;
   isLoading: boolean;
@@ -442,7 +443,8 @@ const normalizeState = (savedState: TournamentState): TournamentState => {
     .filter((event) => !REMOVED_EVENT_IDS.has(event.id))
     .map((event) => ({
       ...event,
-      isVisible: event.isVisible ?? true
+      isVisible: event.isVisible ?? true,
+      bettingLocked: event.bettingLocked ?? false
     }));
   const savedEventMap = new Map(savedEvents.map((event) => [event.id, event]));
   const events = baselineState.events.map((event) => savedEventMap.get(event.id) || event);
@@ -451,7 +453,12 @@ const normalizeState = (savedState: TournamentState): TournamentState => {
   const savedItems = (savedState.bettableItems || [])
     .filter((item) => validEventIds.has(item.eventId));
   const savedItemMap = new Map(savedItems.map((item) => [item.id, item]));
-  const bettableItems = baselineState.bettableItems.map((item) => savedItemMap.get(item.id) || item);
+  const bettableItems = baselineState.bettableItems.map((item) => {
+    const savedItem = savedItemMap.get(item.id);
+    if (!savedItem) return item;
+    const event = events.find((entry) => entry.id === savedItem.eventId);
+    return { ...savedItem, bettingLocked: savedItem.bettingLocked ?? event?.bettingLocked ?? false };
+  });
 
   const validBettableItemIds = new Set(bettableItems.map((item) => item.id));
   const bets = (savedState.bets || []).filter((bet) => validBettableItemIds.has(bet.bettableItemId));
@@ -666,21 +673,20 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const placeBet = async (playerId: string, itemId: string, optionId: string, amount: number) => {
     const latestState = await refreshRemoteState({ force: true });
     const item = latestState.bettableItems.find((entry) => entry.id === itemId);
-    if (!item || item.status !== 'OPEN') return;
+    const event = latestState.events.find((entry) => entry.id === item?.eventId);
+    if (!item || item.status !== 'OPEN' || item.bettingLocked || event?.bettingLocked) return false;
 
     const players = latestState.players.map((player) => ({ ...player }));
     const bets = latestState.bets.map((bet) => ({ ...bet }));
     const player = players.find((entry) => entry.id === playerId);
-    if (!player) return;
+    if (!player) return false;
 
     const existingBetIndex = bets.findIndex((bet) => bet.playerId === playerId && bet.bettableItemId === itemId && !bet.refunded && !bet.voided);
     if (existingBetIndex > -1) {
-      const existingBet = bets[existingBetIndex];
-      player.balance += existingBet.amount;
-      bets.splice(existingBetIndex, 1);
+      return false;
     }
 
-    if (player.balance < amount) return;
+    if (player.balance < amount) return false;
 
     player.balance -= amount;
     bets.push({
@@ -697,6 +703,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       players,
       bets
     });
+    return true;
   };
 
   const loginPlayer = async (playerId: string, pin: string) => {
@@ -793,7 +800,10 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               nextItem.options = readyParticipants
                 ? (event.type === EventType.PAIRED ? buildPairOptions(nextMatchup) : buildMatchupOptions(nextMatchup))
                 : [];
-              if (nextItem.status !== 'SETTLED') nextItem.status = readyParticipants ? 'OPEN' : 'LOCKED';
+              if (nextItem.status !== 'SETTLED') {
+                nextItem.status = readyParticipants ? 'OPEN' : 'LOCKED';
+                nextItem.bettingLocked = event.bettingLocked || nextItem.bettingLocked || false;
+              }
             }
           }
         }
@@ -885,6 +895,22 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const next = settingsMap.get(item.eventId);
         return next ? { ...item, day: next.day } : item;
       })
+    };
+
+    await saveState(newState);
+  };
+
+  const setEventBettingLocked = async (eventId: string, bettingLocked: boolean) => {
+    const newState = {
+      ...state,
+      events: state.events.map((event) => (
+        event.id === eventId ? { ...event, bettingLocked } : event
+      )),
+      bettableItems: state.bettableItems.map((item) => (
+        item.eventId === eventId && item.status !== 'SETTLED'
+          ? { ...item, bettingLocked }
+          : item
+      ))
     };
 
     await saveState(newState);
@@ -1007,13 +1033,13 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const readyParticipants = (matchup.participantIds || []).filter(Boolean).length === 2 && !(matchup.participantIds || []).includes('');
       const options = readyParticipants ? (event.type === EventType.PAIRED ? buildPairOptions(matchup) : buildMatchupOptions(matchup)) : [];
       const isOpening = isOpeningRoundMatchup(event.type, matchup);
-      return { ...item, options, winnerOptionId: undefined, status: isOpening && readyParticipants ? 'OPEN' : 'LOCKED' };
+      return { ...item, options, winnerOptionId: undefined, status: isOpening && readyParticipants ? 'OPEN' : 'LOCKED', bettingLocked: event.bettingLocked || false };
     });
 
     await saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });
   };
   return (
-    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, saveMatchupSettings, voidEventBets, isLoading, refresh }}>
+    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidEventBets, isLoading, refresh }}>
       {children}
     </TournamentContext.Provider>
   );

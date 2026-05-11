@@ -42,7 +42,9 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
 
   const betAmount = Number(betAmountInput || 0);
   const availableBalance = latestPlayer?.balance || 0;
-  const isLocked = item.status !== 'OPEN';
+  const event = state.events.find((entry) => entry.id === item.eventId);
+  const matchup = event?.matchups?.find((entry) => entry.id === item.matchupId);
+  const isLocked = item.status !== 'OPEN' || item.bettingLocked || event?.bettingLocked;
   const pickerIsOpen = alwaysOpen || isExpanded;
   const hasFunding = availableBalance >= 5;
   const isBetValid = !userBet && Number.isFinite(betAmount) && betAmount >= 5 && betAmount <= availableBalance;
@@ -71,7 +73,7 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
     setShowConfirmModal(true);
   };
 
-  const submitBetWithPin = () => {
+  const submitBetWithPin = async () => {
     if (!currentUser || !selectedOption) return;
     if (betPin.length !== 4) {
       setBetPinError('Enter your 4 digit PIN.');
@@ -82,7 +84,12 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
       return;
     }
 
-    placeBet(currentUser.id, item.id, selectedOption, betAmount);
+    const betWasPlaced = await placeBet(currentUser.id, item.id, selectedOption, betAmount);
+    if (!betWasPlaced) {
+      setBetPinError('Betting is locked or your balance changed. Refresh and try again.');
+      return;
+    }
+
     setShowConfirmModal(false);
     setShowSuccessModal(true);
     setIsExpanded(false);
@@ -90,9 +97,6 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
     setBetPinError('');
     onBetPlaced?.();
   };
-
-  const event = state.events.find((entry) => entry.id === item.eventId);
-  const matchup = event?.matchups?.find((entry) => entry.id === item.matchupId);
 
   const getResolvedTeam = (optionId: string, fallbackLabel: string) => {
     const participantIndex = matchup?.participantIds?.findIndex((participantId) => participantId === optionId) ?? -1;
@@ -169,7 +173,7 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
                     : 'border-slate-700 bg-slate-950/40 text-slate-500'
               }`}
             >
-              {userBet ? 'Bet Wagered' : 'Place Bet'}
+              {userBet ? 'Bet Wagered' : isLocked ? 'Locked' : 'Place Bet'}
             </button>
           )}
         </div>
@@ -301,10 +305,10 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
             </div>
             <button
               onClick={handleBet}
-              disabled={!selectedOption || !isBetValid}
+              disabled={isLocked || !selectedOption || !isBetValid}
               className="rounded-xl bg-emerald-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-black transition-all active:scale-95 disabled:bg-slate-700 disabled:text-slate-500"
             >
-              {userBet ? 'Bet Wagered' : !hasFunding ? 'No Funds' : 'Confirm'}
+              {userBet ? 'Bet Wagered' : isLocked ? 'Locked' : !hasFunding ? 'No Funds' : 'Confirm'}
             </button>
           </div>
 

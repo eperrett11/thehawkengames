@@ -48,6 +48,7 @@ export interface BettableItem {
   label: string;
   options: { id: string; label: string }[];
   status: 'OPEN' | 'LOCKED' | 'SETTLED';
+  bettingLocked?: boolean;
   winnerOptionId?: string;
   day: 1 | 2;
   matchupId?: string;
@@ -60,6 +61,7 @@ export interface Event {
   type: EventType;
   status: EventStatus;
   isVisible: boolean;
+  bettingLocked?: boolean;
   winnerTeamId?: string;
   winnerTeamIds?: string[];
   bettableItemIds: string[];
