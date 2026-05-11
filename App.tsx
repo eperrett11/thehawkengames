@@ -9,6 +9,7 @@ import Admin from './components/Admin';
 import Teams from './components/Teams';
 import BirdIcon from './components/BirdIcon';
 import HawkenLogo from './components/HawkenLogo';
+import PlayerCardStats from './components/PlayerCardStats';
 import { FORMAT_RULES } from './constants';
 
 const ADMIN_PIN = '3370';
@@ -538,6 +539,7 @@ const Main: React.FC = () => {
               >
                 {introCardPlayer.teamName}
               </div>
+              <PlayerCardStats playerName={introCardPlayer.name} colorHex={introCardPlayer.colorHex} />
             </div>
 
             <button

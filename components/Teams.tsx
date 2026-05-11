@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTournament } from '../store';
+import PlayerCardStats from './PlayerCardStats';
 
 const PLACEHOLDER_SRC = '/images/player-card-placeholder.jpg';
 const PLAYER_CARD_SRC: Record<string, string> = {
@@ -182,6 +183,7 @@ const Teams: React.FC = () => {
               <div className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: selectedPlayer.colorHex }}>
                 {selectedPlayer.teamName}
               </div>
+              <PlayerCardStats playerName={selectedPlayer.name} colorHex={selectedPlayer.colorHex} />
             </div>
           </div>
         </div>
