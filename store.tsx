@@ -43,13 +43,14 @@ const STORAGE_KEY = 'hawken_games_v5';
 const LEGACY_STORAGE_KEY = 'hawken_games_v2';
 const BANKROLL_MODEL_KEY = 'hawken_games_bankroll_buyin_v1';
 const PAIRED_LAYOUT_MODEL_KEY = 'hawken_games_paired_layout_v3';
+const ACTIVE_ROSTER_MODEL_KEY = 'hawken_games_active_roster_no_sam_v1';
 const REMOVED_EVENT_IDS = new Set<string>();
 const INITIAL_BALANCE = 0;
 const FINAL_TEAM_PLAYER_IDS: Record<string, string[]> = {
   t1: ['p0', 'p5', 'p10', 'p7'],
   t2: ['p8', 'p9', 'p12', 'p6'],
   t3: ['p1', 'p14', 'p2', 'p17'],
-  t4: ['p3', 'p11', 'p4', 'p15', 'p16']
+  t4: ['p3', 'p11', 'p4', 'p15']
 };
 
 const getPairEntryTeamId = (pairEntryId: string) => pairEntryId.split('-pair-')[0] || pairEntryId;
@@ -196,21 +197,6 @@ const buildMatchupOptions = (matchup: Matchup) => {
 const getPlayerNamesByIds = (players: Player[], playerIds: string[]) => playerIds.map((playerId) => players.find((player) => player.id === playerId)?.name || 'Unknown');
 
 const getTeamName = (teams: Team[], teamId: string) => teams.find((team) => team.id === teamId)?.name || 'TBD';
-const normalizeSavedPlayerName = (value: string) => value.replace(/\bSam Simmons\b/g, 'Sam');
-
-const normalizeSavedMatchupNames = (matchup: Matchup): Matchup => ({
-  ...matchup,
-  participants: (matchup.participants || []).map(normalizeSavedPlayerName),
-  participantPlayers: (matchup.participantPlayers || []).map((group) => group.map(normalizeSavedPlayerName))
-});
-
-const normalizeSavedBettableItemNames = (item: BettableItem): BettableItem => ({
-  ...item,
-  options: (item.options || []).map((option) => ({
-    ...option,
-    label: normalizeSavedPlayerName(option.label)
-  }))
-});
 
 const isOpeningRoundMatchup = (eventType: EventType, matchup: Matchup) =>
   (eventType === EventType.PAIRED && matchup.round === 'Quarterfinal') ||
@@ -456,16 +442,14 @@ const normalizeState = (savedState: TournamentState): TournamentState => {
     .filter((event) => !REMOVED_EVENT_IDS.has(event.id))
     .map((event) => ({
       ...event,
-      isVisible: event.isVisible ?? true,
-      matchups: event.matchups?.map(normalizeSavedMatchupNames)
+      isVisible: event.isVisible ?? true
     }));
   const savedEventMap = new Map(savedEvents.map((event) => [event.id, event]));
   const events = baselineState.events.map((event) => savedEventMap.get(event.id) || event);
 
   const validEventIds = new Set(events.map((event) => event.id));
   const savedItems = (savedState.bettableItems || [])
-    .filter((item) => validEventIds.has(item.eventId))
-    .map(normalizeSavedBettableItemNames);
+    .filter((item) => validEventIds.has(item.eventId));
   const savedItemMap = new Map(savedItems.map((item) => [item.id, item]));
   const bettableItems = baselineState.bettableItems.map((item) => savedItemMap.get(item.id) || item);
 
@@ -503,6 +487,10 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         nextState = createInitialState(nextState.players, nextState.teams);
         localStorage.setItem(PAIRED_LAYOUT_MODEL_KEY, 'ready');
       }
+      if (localStorage.getItem(ACTIVE_ROSTER_MODEL_KEY) !== 'ready') {
+        nextState = createInitialState(nextState.players.map((player) => ({ ...player, balance: INITIAL_BALANCE })), nextState.teams);
+        localStorage.setItem(ACTIVE_ROSTER_MODEL_KEY, 'ready');
+      }
       activeState = nextState;
       setState(nextState);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
@@ -515,6 +503,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem(STORAGE_KEY, JSON.stringify(initialState));
       localStorage.setItem(BANKROLL_MODEL_KEY, 'ready');
       localStorage.setItem(PAIRED_LAYOUT_MODEL_KEY, 'ready');
+      localStorage.setItem(ACTIVE_ROSTER_MODEL_KEY, 'ready');
     }
 
     if (isBackendEnabled) {
@@ -522,8 +511,22 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const remoteState = await loadRemoteTournamentState();
 
         if (remoteState) {
-          activeState = normalizeState(remoteState.state);
-          remoteRevisionRef.current = remoteState.revision;
+          const normalizedRemoteState = normalizeState(remoteState.state);
+          const remoteNeedsRosterReset = (remoteState.state.players || []).some((player) => player.id === 'p16' || player.name === 'Sam')
+            || (remoteState.state.teams || []).some((team) => team.playerIds.includes('p16'));
+
+          if (remoteNeedsRosterReset) {
+            const resetState = createInitialState(
+              normalizedRemoteState.players.map((player) => ({ ...player, balance: INITIAL_BALANCE })),
+              normalizedRemoteState.teams
+            );
+            const committedState = await commitRemoteTournamentState(resetState, remoteState.revision);
+            activeState = normalizeState(committedState.state);
+            remoteRevisionRef.current = committedState.revision;
+          } else {
+            activeState = normalizedRemoteState;
+            remoteRevisionRef.current = remoteState.revision;
+          }
         } else {
           const seededState = await seedRemoteTournamentState(activeState);
           activeState = normalizeState(seededState.state);

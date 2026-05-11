@@ -33,8 +33,7 @@ const PLAYER_CARD_SRC: Record<string, string> = {
   Justin: '/images/playercards/justin.jpg',
   Kai: '/images/playercards/kai.jpg',
   Luke: '/images/playercards/luke.jpg',
-  Nolan: '/images/playercards/nolan.jpg',
-  Sam: '/images/playercards/sam.jpg'
+  Nolan: '/images/playercards/nolan.jpg'
 };
 
 const getPlayerCardSrc = (name: string) => PLAYER_CARD_SRC[name] || PLAYER_CARD_SRC[name.split(' ')[0]] || PLAYER_CARD_PLACEHOLDER_SRC;

@@ -24,7 +24,6 @@ export const PLAYER_DEFS = [
   { id: 'p12', name: 'Luke' },
   { id: 'p14', name: 'Kai' },
   { id: 'p15', name: 'Nolan' },
-  { id: 'p16', name: 'Sam' },
   { id: 'p17', name: 'Ben' }
 ] as const;
 
