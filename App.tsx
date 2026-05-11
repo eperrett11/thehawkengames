@@ -315,8 +315,8 @@ const Main: React.FC = () => {
                       <div>
                         <h4 className="mb-1 text-[10px] font-black uppercase tracking-widest text-emerald-500">2v2 Tournaments</h4>
                         <p>2v2 tournament events use an eight-pair bracket and starts in the quarterfinals. The quarterfinal pairs are <span className="font-bold text-white">fixed before the event starts</span>, and the app shows the exact pairings on the Schedule.</p>
-                        <p className="mt-2">Because each team has two pair entries, both pairs from the same team can win their quarterfinal games and may play each other in the semifinal.</p>
-                        <p className="mt-2">This is expected. The bracket is arranged so the <span className="font-bold text-white">final will always be between two different teams</span>.</p>
+                        <p className="mt-2">Because each team has two pair entries, both pairs from the same team may win their quarterfinal games and face each other in the semifinal.</p>
+                        <p className="mt-2">This is expected. The bracket is arranged so the <span className="font-bold text-white">final will always be between two different teams</span>. Betting will be locked for semifinal matchups in 2v2 tournaments, but betting for the final matchups will automatically open when the scores are entered for the semis.</p>
                         <p className="mt-2">For semifinals and finals, <span className="font-bold text-white">teams may choose which players they want to send into the matchup</span>. Because of that, the app may show only the team name for those later rounds until the commissioner enters the result.</p>
                         <p className="mt-2">When the commissioner enters a semifinal or final result, they select which two players from the winning team receive the individual win.</p>
                       </div>
