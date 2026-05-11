@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TournamentProvider, useTournament } from './store';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
@@ -20,22 +20,22 @@ const PLAYER_TABS = ['Schedule', 'Teams', 'Leaderboard', 'Betting', 'Rules'];
 const LIVE_TABS = PLAYER_TABS;
 const PLAYER_CARD_PLACEHOLDER_SRC = '/images/player-card-placeholder.jpg';
 const PLAYER_CARD_SRC: Record<string, string> = {
-  Andrew: '/images/playercards/andrew.jpg',
-  Ben: '/images/playercards/ben.jpg',
-  Bobby: '/images/playercards/bobby.jpg',
-  Brendan: '/images/playercards/brendan.jpg',
-  Clay: '/images/playercards/clay.jpg',
-  Cole: '/images/playercards/cole.jpg',
-  Connor: '/images/playercards/connor.jpg',
-  Eli: '/images/playercards/eli.jpg',
-  Forrest: '/images/playercards/forrest.jpg',
-  Hawken: '/images/playercards/hawken.jpg',
-  Jack: '/images/playercards/jack.jpg',
-  Jordan: '/images/playercards/jordan.jpg',
-  Justin: '/images/playercards/justin.jpg',
-  Kai: '/images/playercards/kai.jpg',
-  Luke: '/images/playercards/luke.jpg',
-  Nolan: '/images/playercards/nolan.jpg'
+  Andrew: '/images/playercards/andrew.webp',
+  Ben: '/images/playercards/ben.webp',
+  Bobby: '/images/playercards/bobby.webp',
+  Brendan: '/images/playercards/brendan.webp',
+  Clay: '/images/playercards/clay.webp',
+  Cole: '/images/playercards/cole.webp',
+  Connor: '/images/playercards/connor.webp',
+  Eli: '/images/playercards/eli.webp',
+  Forrest: '/images/playercards/forrest.webp',
+  Hawken: '/images/playercards/hawken.webp',
+  Jack: '/images/playercards/jack.webp',
+  Jordan: '/images/playercards/jordan.webp',
+  Justin: '/images/playercards/justin.webp',
+  Kai: '/images/playercards/kai.webp',
+  Luke: '/images/playercards/luke.webp',
+  Nolan: '/images/playercards/nolan.webp'
 };
 
 const getPlayerCardSrc = (name: string) => PLAYER_CARD_SRC[name] || PLAYER_CARD_SRC[name.split(' ')[0]] || PLAYER_CARD_PLACEHOLDER_SRC;
@@ -102,6 +102,19 @@ const Main: React.FC = () => {
     const syncLocation = () => setPathname(window.location.pathname);
     window.addEventListener('popstate', syncLocation);
     return () => window.removeEventListener('popstate', syncLocation);
+  }, []);
+
+  useEffect(() => {
+    const preloadPlayerCards = () => {
+      [...new Set(Object.values(PLAYER_CARD_SRC))].forEach((src) => {
+        const image = new Image();
+        image.decoding = 'async';
+        image.src = src;
+      });
+    };
+
+    const timeoutId = window.setTimeout(preloadPlayerCards, 600);
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
