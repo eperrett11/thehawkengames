@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTournament } from '../store';
-import PlayerCardStats from './PlayerCardStats';
+import PlayerCardStats, { getPlayerCardDisplayName } from './PlayerCardStats';
 
 const PLACEHOLDER_SRC = '/images/player-card-placeholder.jpg';
 const PLAYER_CARD_SRC: Record<string, string> = {
@@ -157,7 +157,7 @@ const Teams: React.FC = () => {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),rgba(255,255,255,0)_45%)]" />
                 <div className="h-full flex flex-col items-center justify-center px-6 text-center text-white">
                   <div className="text-[10px] font-black uppercase tracking-[0.28em] text-white/75">The Hawken Games</div>
-                  <div className="mt-4 text-3xl font-black italic uppercase leading-none">{selectedPlayer.name}</div>
+                  <div className="mt-4 text-3xl font-black italic uppercase leading-none text-white">{getPlayerCardDisplayName(selectedPlayer.name)}</div>
                   <div className="mt-2 text-sm font-black uppercase tracking-[0.22em]">{selectedPlayer.teamName}</div>
                 </div>
               </div>
@@ -179,8 +179,13 @@ const Teams: React.FC = () => {
               </div>
             </div>
             <div className="mt-3 text-center transition-opacity duration-200" style={{ opacity: isCardOpen ? 1 : 0 }}>
-              <div className="text-lg font-black italic uppercase tracking-tight text-white">{selectedPlayer.name}</div>
-              <div className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: selectedPlayer.colorHex }}>
+              <div
+                className="text-lg font-black italic uppercase tracking-tight text-white"
+                style={{ textShadow: '0 2px 14px rgba(255,255,255,0.14), 0 2px 10px rgba(0,0,0,0.65)' }}
+              >
+                {getPlayerCardDisplayName(selectedPlayer.name)}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: selectedPlayer.colorHex }}>
                 {selectedPlayer.teamName}
               </div>
               <PlayerCardStats playerName={selectedPlayer.name} colorHex={selectedPlayer.colorHex} />

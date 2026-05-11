@@ -9,7 +9,7 @@ import Admin from './components/Admin';
 import Teams from './components/Teams';
 import BirdIcon from './components/BirdIcon';
 import HawkenLogo from './components/HawkenLogo';
-import PlayerCardStats from './components/PlayerCardStats';
+import PlayerCardStats, { getPlayerCardDisplayName } from './components/PlayerCardStats';
 import { FORMAT_RULES } from './constants';
 
 const ADMIN_PIN = '3370';
@@ -506,7 +506,7 @@ const Main: React.FC = () => {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),rgba(255,255,255,0)_45%)]" />
                 <div className="relative flex h-full flex-col items-center justify-center px-6 text-center text-white">
                   <div className="text-[10px] font-black uppercase tracking-[0.28em] text-white/75">The Hawken Games</div>
-                  <div className="mt-4 text-4xl font-black italic uppercase leading-none">{introCardPlayer.name}</div>
+                  <div className="mt-4 text-4xl font-black italic uppercase leading-none text-white">{getPlayerCardDisplayName(introCardPlayer.name)}</div>
                   <div className="mt-3 text-sm font-black uppercase tracking-[0.22em]">{introCardPlayer.teamName}</div>
                 </div>
               </div>
@@ -532,9 +532,14 @@ const Main: React.FC = () => {
               className="mt-3 text-center transition-opacity duration-200"
               style={{ opacity: isIntroCardOpen ? 1 : 0 }}
             >
-              <div className="text-lg font-black italic uppercase tracking-tight text-white">{introCardPlayer.name}</div>
               <div
-                className="text-[10px] font-black uppercase tracking-[0.18em]"
+                className="text-lg font-black italic uppercase tracking-tight text-white"
+                style={{ textShadow: '0 2px 14px rgba(255,255,255,0.14), 0 2px 10px rgba(0,0,0,0.65)' }}
+              >
+                {getPlayerCardDisplayName(introCardPlayer.name)}
+              </div>
+              <div
+                className="text-[11px] font-black uppercase tracking-[0.18em]"
                 style={{ color: introCardPlayer.colorHex }}
               >
                 {introCardPlayer.teamName}
