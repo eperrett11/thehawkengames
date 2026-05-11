@@ -48,6 +48,13 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
   const pickerIsOpen = alwaysOpen || isExpanded;
   const hasFunding = availableBalance >= 5;
   const isBetValid = !userBet && Number.isFinite(betAmount) && betAmount >= 5 && betAmount <= availableBalance;
+  const selectedOptionStats = selectedOption ? poolStats.options.find((option) => option.id === selectedOption) : undefined;
+  const proposedTotalPool = poolStats.total + (Number.isFinite(betAmount) && betAmount > 0 ? betAmount : 0);
+  const proposedWinningPool = (selectedOptionStats?.amount || 0) + (Number.isFinite(betAmount) && betAmount > 0 ? betAmount : 0);
+  const proposedHasOpposingBets = selectedOption ? poolStats.options.some((option) => option.id !== selectedOption && option.amount > 0) : false;
+  const projectedPayout = selectedOption && proposedWinningPool > 0 && proposedHasOpposingBets
+    ? (betAmount / proposedWinningPool) * proposedTotalPool
+    : 0;
 
 
   useEffect(() => {
@@ -301,6 +308,12 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
                   }}
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-8 pr-3 text-center text-base font-black text-white outline-none disabled:opacity-55"
                 />
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/55 px-3 py-2">
+                <span className="text-[8px] font-black uppercase tracking-[0.13em] text-slate-500">Estimated Payout</span>
+                <span className={`text-sm font-black uppercase leading-none ${selectedOption && proposedHasOpposingBets ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {!selectedOption ? '-' : proposedHasOpposingBets ? `$${projectedPayout.toFixed(2)}` : 'Void'}
+                </span>
               </div>
             </div>
             <button
