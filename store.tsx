@@ -470,6 +470,49 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [currentUser, setCurrentUser] = useState<Player | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const remoteRevisionRef = useRef<number | null>(null);
+  const stateRef = useRef<TournamentState>(state);
+  const currentUserRef = useRef<Player | null>(currentUser);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  const applyTournamentState = useCallback((nextState: TournamentState) => {
+    stateRef.current = nextState;
+    setState(nextState);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+
+    const activeUser = currentUserRef.current;
+    if (activeUser) {
+      const updatedUser = nextState.players.find((player) => player.id === activeUser.id) || null;
+      currentUserRef.current = updatedUser;
+      setCurrentUser(updatedUser);
+      if (updatedUser) {
+        localStorage.setItem('hawken_user', JSON.stringify(updatedUser));
+      } else {
+        localStorage.removeItem('hawken_user');
+      }
+    }
+  }, []);
+
+  const refreshRemoteState = useCallback(async (options: { force?: boolean } = {}) => {
+    if (!isBackendEnabled) return stateRef.current;
+
+    const remoteState = await loadRemoteTournamentState();
+    if (!remoteState) return stateRef.current;
+
+    const shouldApply = options.force || remoteRevisionRef.current === null || remoteState.revision > remoteRevisionRef.current;
+    if (!shouldApply) return stateRef.current;
+
+    const normalizedState = normalizeState(remoteState.state);
+    remoteRevisionRef.current = remoteState.revision;
+    applyTournamentState(normalizedState);
+    return normalizedState;
+  }, [applyTournamentState]);
 
   const init = useCallback(async () => {
     setIsLoading(true);
@@ -561,9 +604,30 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     init();
   }, [init]);
 
-  const refresh = () => init();
+  useEffect(() => {
+    if (!isBackendEnabled || isLoading) return undefined;
+
+    const pollLatestState = () => {
+      refreshRemoteState().catch((error) => {
+        console.warn('Live state refresh failed.', error);
+      });
+    };
+
+    const intervalId = window.setInterval(pollLatestState, 2000);
+    window.addEventListener('focus', pollLatestState);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', pollLatestState);
+    };
+  }, [isLoading, refreshRemoteState]);
+
+  const refresh = () => {
+    init();
+  };
 
   const saveState = async (newState: TournamentState): Promise<TournamentState> => {
+    stateRef.current = newState;
     setState(newState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
 
@@ -578,6 +642,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const committedState = await commitRemoteTournamentState(newState, remoteRevisionRef.current);
         const normalizedState = normalizeState(committedState.state);
         remoteRevisionRef.current = committedState.revision;
+        stateRef.current = normalizedState;
         setState(normalizedState);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedState));
 
@@ -599,11 +664,12 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const placeBet = async (playerId: string, itemId: string, optionId: string, amount: number) => {
-    const item = state.bettableItems.find((entry) => entry.id === itemId);
+    const latestState = await refreshRemoteState({ force: true });
+    const item = latestState.bettableItems.find((entry) => entry.id === itemId);
     if (!item || item.status !== 'OPEN') return;
 
-    const players = state.players.map((player) => ({ ...player }));
-    const bets = state.bets.map((bet) => ({ ...bet }));
+    const players = latestState.players.map((player) => ({ ...player }));
+    const bets = latestState.bets.map((bet) => ({ ...bet }));
     const player = players.find((entry) => entry.id === playerId);
     if (!player) return;
 
@@ -627,7 +693,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
 
     await saveState({
-      ...state,
+      ...latestState,
       players,
       bets
     });
