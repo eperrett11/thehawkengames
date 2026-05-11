@@ -309,12 +309,6 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-8 pr-3 text-center text-base font-black text-white outline-none disabled:opacity-55"
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/55 px-3 py-2">
-                <span className="text-[8px] font-black uppercase tracking-[0.13em] text-slate-500">Estimated Payout</span>
-                <span className={`text-sm font-black uppercase leading-none ${selectedOption && proposedHasOpposingBets ? 'text-emerald-400' : 'text-slate-400'}`}>
-                  {!selectedOption ? '-' : proposedHasOpposingBets ? `$${projectedPayout.toFixed(2)}` : 'Void'}
-                </span>
-              </div>
             </div>
             <button
               onClick={handleBet}
@@ -326,7 +320,12 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
           </div>
 
           <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-            <span>Min $5</span>
+            <span>
+              Estimated Payout{' '}
+              <span className={`font-black uppercase ${selectedOption && proposedHasOpposingBets ? 'text-emerald-400' : 'text-slate-400'}`}>
+                {!selectedOption ? '-' : proposedHasOpposingBets ? `$${projectedPayout.toFixed(2)}` : 'Void'}
+              </span>
+            </span>
             <span>Available ${availableBalance.toFixed(2)}</span>
           </div>
         </div>
