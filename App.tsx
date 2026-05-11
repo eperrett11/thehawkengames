@@ -251,7 +251,6 @@ const Main: React.FC = () => {
                       <div>
                         <h4 className="mb-1 text-[10px] font-black uppercase tracking-widest text-emerald-500">Team Leaderboard</h4>
                         <p>The Team Leaderboard tracks overall event wins. When a team wins a completed event, that team earns 1 point.</p>
-                        <p className="mt-2">For combined-team events, both original teams on the winning side receive 1 point.</p>
                       </div>
 
                       <div>
@@ -265,7 +264,6 @@ const Main: React.FC = () => {
                         <ul className="space-y-2">
                           <li>For 2v2 tournament games, the two players on the winning pair each receive 1 individual win.</li>
                           <li>For full-team tournament games, every player on the winning team receives 1 individual win.</li>
-                          <li>For combined-team events, every player on the winning combined side receives 1 individual win.</li>
                           <li>Aggregate events are team scoring events only. They award points on the Team Leaderboard, but they <span className="font-bold text-white">do not add individual wins</span>.</li>
                         </ul>
                       </div>
