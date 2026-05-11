@@ -80,11 +80,11 @@ const Teams: React.FC = () => {
                 </div>
               </div>
 
-              <div className="relative h-full pl-[56px] pr-1.5 py-1 min-w-0 flex items-center">
+              <div className="relative h-full pl-[54px] pr-2 py-1 min-w-0 flex items-center">
                 {team.players.length === 0 ? (
                   <p className="text-[10px] text-slate-500 italic uppercase font-bold self-center">Draft Pending</p>
                 ) : (
-                  <div className="grid grid-cols-5 gap-1.5 w-full items-center">
+                  <div className="grid grid-cols-4 gap-2 w-full h-full items-center">
                     {team.players.map((name, idx) => {
                       const cardId = `${team.id}-${name}-${idx}`;
 
@@ -94,7 +94,7 @@ const Teams: React.FC = () => {
                           onClick={() => handlePlayerCardClick(name, team.name, team.colorHex)}
                           className="group min-w-0 h-full flex items-center justify-center focus:outline-none"
                         >
-                          <div className="w-full h-full flex flex-col items-center justify-start">
+                          <div className="w-full h-full flex flex-col items-center justify-center">
                             <div
                               className="relative aspect-[4/5] w-full rounded-[12px] border-2 bg-slate-950/78 shadow-[0_10px_22px_rgba(2,6,23,0.28)] overflow-hidden transition-transform duration-150 group-active:scale-[0.98]"
                               style={{ borderColor: `${team.colorHex}CC` }}
@@ -106,8 +106,8 @@ const Teams: React.FC = () => {
                               />
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0)_28%,rgba(15,23,42,0.12)_100%)]" />
                             </div>
-                            <div className="mt-1 min-h-[20px] text-center px-0.5">
-                              <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.06em] leading-tight text-white break-words">
+                            <div className="mt-1 min-h-[22px] text-center px-0.5">
+                              <div className="text-[11px] sm:text-[12px] font-black uppercase tracking-[0.05em] leading-tight text-white break-words">
                                 {name}
                               </div>
                             </div>
