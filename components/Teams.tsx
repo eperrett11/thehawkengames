@@ -60,7 +60,7 @@ const Teams: React.FC = () => {
   return (
     <>
       <div className="h-full w-full px-3 py-2 animate-in fade-in duration-500 overflow-hidden">
-        <div className="h-full grid grid-rows-[repeat(4,minmax(0,1fr))] gap-1.5">
+        <div className="h-full grid grid-rows-[repeat(4,minmax(0,1fr))] gap-2">
           {teamRows.map((team) => (
             <div
               key={team.id}
@@ -80,11 +80,11 @@ const Teams: React.FC = () => {
                 </div>
               </div>
 
-              <div className="relative h-full pl-[54px] pr-2 py-1 min-w-0 flex items-center">
+              <div className="relative h-full pl-[58px] pr-3 py-2 min-w-0 flex items-center">
                 {team.players.length === 0 ? (
                   <p className="text-[10px] text-slate-500 italic uppercase font-bold self-center">Draft Pending</p>
                 ) : (
-                  <div className="grid grid-cols-4 gap-2 w-full h-full items-center">
+                  <div className="grid grid-cols-4 gap-2.5 w-full h-full items-center">
                     {team.players.map((name, idx) => {
                       const cardId = `${team.id}-${name}-${idx}`;
 
