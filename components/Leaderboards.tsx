@@ -215,10 +215,10 @@ const Leaderboard: React.FC = () => {
               key={player.id}
               className="relative rounded-xl border border-slate-700/80 bg-slate-800/70 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
             >
-              <div className="flex items-center gap-2 pl-1">
-                <div className="w-6 shrink-0 text-center text-xl font-black italic text-white/28">{idx + 1}</div>
+              <div className="grid grid-cols-[1.35rem_2.75rem_minmax(0,1fr)_3.35rem_4.6rem] items-center gap-2">
+                <div className="text-center text-lg font-black italic text-white/28">{idx + 1}</div>
                 <div
-                  className="h-14 w-11 shrink-0 overflow-hidden rounded-lg border bg-slate-950"
+                  className="h-14 w-11 overflow-hidden rounded-lg border bg-slate-950"
                   style={{ borderColor: `${player.colorHex}CC` }}
                 >
                   <img
@@ -227,29 +227,29 @@ const Leaderboard: React.FC = () => {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="overflow-visible whitespace-nowrap text-base font-black uppercase italic leading-snug tracking-tight text-white sm:text-lg">{player.name}</div>
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-black uppercase italic leading-snug tracking-tight text-white sm:text-lg">{player.name}</div>
                   <div className="mt-0.5 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: player.colorHex }}>
                     {player.teamColor} Team
                   </div>
                 </div>
-                <div className="shrink-0 space-y-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  <div className="grid grid-cols-[1.25rem_auto] gap-1">
+                <div className="space-y-0.5 text-[8px] font-black uppercase tracking-[0.08em] text-slate-500">
+                  <div className="grid grid-cols-[1rem_auto] items-center gap-1">
                     <span className="text-right text-white/70">{player.activeCount}</span>
                     <span>Active</span>
                   </div>
-                  <div className="grid grid-cols-[1.25rem_auto] gap-1">
+                  <div className="grid grid-cols-[1rem_auto] items-center gap-1">
                     <span className="text-right text-white/70">{player.wonCount}</span>
                     <span>Won</span>
                   </div>
-                  <div className="grid grid-cols-[1.25rem_auto] gap-1">
+                  <div className="grid grid-cols-[1rem_auto] items-center gap-1">
                     <span className="text-right text-white/70">{player.lostCount}</span>
                     <span>Lost</span>
                   </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">Bankroll</div>
-                  <div className="mt-1 text-lg font-black leading-none text-emerald-400">${player.balance.toFixed(2)}</div>
+                <div className="min-w-0 text-right">
+                  <div className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-500">Bankroll</div>
+                  <div className="mt-1 whitespace-nowrap text-[17px] font-black leading-none text-emerald-400">${player.balance.toFixed(2)}</div>
                 </div>
               </div>
             </div>
