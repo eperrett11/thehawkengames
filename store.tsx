@@ -203,6 +203,13 @@ const isOpeningRoundMatchup = (eventType: EventType, matchup: Matchup) =>
   (eventType === EventType.PAIRED && matchup.round === 'Quarterfinal') ||
   (eventType === EventType.TEAM_BRACKET && matchup.round === 'Semifinal');
 
+const getDefaultBettingLockedForMatchup = (eventType: EventType, matchup: Matchup, readyParticipants = true) => {
+  if (!readyParticipants) return true;
+  if (eventType === EventType.PAIRED && matchup.round === 'Semifinal') return true;
+  if (eventType === EventType.PAIRED && matchup.round === 'Final') return false;
+  return false;
+};
+
 const createPairedEventPlans = (pairedEvents: { id: string; day: 1 | 2 }[], teams: Team[]) => {
   const plans = new Map<string, PairedEventPlan>();
   const teamIds = teams.map((team) => team.id);
@@ -331,7 +338,17 @@ const buildTournamentData = (players: Player[], teams: Team[]) => {
       if (eventData.type === EventType.PAIRED) {
         return matchups.map((matchup) => {
           const id = `item-${eventData.id}-${matchup.gameNumber}`;
-          items.push({ id, eventId: eventData.id, label: `Game ${matchup.gameNumber}`, options: buildPairOptions(matchup), status: matchup.round === 'Quarterfinal' ? 'OPEN' : 'LOCKED', day: eventData.day as 1 | 2, matchupId: matchup.id });
+          const readyParticipants = matchup.round === 'Quarterfinal';
+          items.push({
+            id,
+            eventId: eventData.id,
+            label: `Game ${matchup.gameNumber}`,
+            options: readyParticipants ? buildPairOptions(matchup) : [],
+            status: readyParticipants ? 'OPEN' : 'LOCKED',
+            bettingLocked: getDefaultBettingLockedForMatchup(eventData.type, matchup, readyParticipants),
+            day: eventData.day as 1 | 2,
+            matchupId: matchup.id
+          });
           return id;
         });
       }
@@ -457,7 +474,12 @@ const normalizeState = (savedState: TournamentState): TournamentState => {
     const savedItem = savedItemMap.get(item.id);
     if (!savedItem) return item;
     const event = events.find((entry) => entry.id === savedItem.eventId);
-    return { ...savedItem, bettingLocked: savedItem.bettingLocked ?? event?.bettingLocked ?? false };
+    const matchup = event?.matchups?.find((entry) => entry.id === savedItem.matchupId);
+    const readyParticipants = (matchup?.participantIds || []).filter(Boolean).length === 2 && !(matchup?.participantIds || []).includes('');
+    const forcedTournamentLock = event && matchup && event.type === EventType.PAIRED
+      ? getDefaultBettingLockedForMatchup(event.type, matchup, readyParticipants)
+      : false;
+    return { ...savedItem, bettingLocked: savedItem.status !== 'SETTLED' ? forcedTournamentLock || (savedItem.bettingLocked ?? false) : savedItem.bettingLocked };
   });
 
   const validBettableItemIds = new Set(bettableItems.map((item) => item.id));
@@ -673,8 +695,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const placeBet = async (playerId: string, itemId: string, optionId: string, amount: number) => {
     const latestState = await refreshRemoteState({ force: true });
     const item = latestState.bettableItems.find((entry) => entry.id === itemId);
-    const event = latestState.events.find((entry) => entry.id === item?.eventId);
-    if (!item || item.status !== 'OPEN' || item.bettingLocked || event?.bettingLocked) return false;
+    if (!item || item.status !== 'OPEN' || item.bettingLocked) return false;
 
     const players = latestState.players.map((player) => ({ ...player }));
     const bets = latestState.bets.map((bet) => ({ ...bet }));
@@ -802,7 +823,9 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 : [];
               if (nextItem.status !== 'SETTLED') {
                 nextItem.status = readyParticipants ? 'OPEN' : 'LOCKED';
-                nextItem.bettingLocked = event.bettingLocked || nextItem.bettingLocked || false;
+                nextItem.bettingLocked = event.type === EventType.PAIRED
+                  ? getDefaultBettingLockedForMatchup(event.type, nextMatchup, readyParticipants)
+                  : event.bettingLocked || nextItem.bettingLocked || false;
               }
             }
           }
@@ -906,11 +929,16 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       events: state.events.map((event) => (
         event.id === eventId ? { ...event, bettingLocked } : event
       )),
-      bettableItems: state.bettableItems.map((item) => (
-        item.eventId === eventId && item.status !== 'SETTLED'
-          ? { ...item, bettingLocked }
-          : item
-      ))
+      bettableItems: state.bettableItems.map((item) => {
+        if (item.eventId !== eventId || item.status !== 'OPEN') return item;
+
+        const event = state.events.find((entry) => entry.id === item.eventId);
+        const matchup = event?.matchups?.find((entry) => entry.id === item.matchupId);
+        const readyParticipants = (matchup?.participantIds || []).filter(Boolean).length === 2 && !(matchup?.participantIds || []).includes('');
+        const forcedLock = event && matchup ? getDefaultBettingLockedForMatchup(event.type, matchup, readyParticipants) : false;
+
+        return { ...item, bettingLocked: forcedLock || bettingLocked };
+      })
     };
 
     await saveState(newState);
@@ -1033,7 +1061,13 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const readyParticipants = (matchup.participantIds || []).filter(Boolean).length === 2 && !(matchup.participantIds || []).includes('');
       const options = readyParticipants ? (event.type === EventType.PAIRED ? buildPairOptions(matchup) : buildMatchupOptions(matchup)) : [];
       const isOpening = isOpeningRoundMatchup(event.type, matchup);
-      return { ...item, options, winnerOptionId: undefined, status: isOpening && readyParticipants ? 'OPEN' : 'LOCKED', bettingLocked: event.bettingLocked || false };
+      return {
+        ...item,
+        options,
+        winnerOptionId: undefined,
+        status: isOpening && readyParticipants ? 'OPEN' : 'LOCKED',
+        bettingLocked: getDefaultBettingLockedForMatchup(event.type, matchup, readyParticipants) || (event.type !== EventType.PAIRED && !!event.bettingLocked)
+      };
     });
 
     await saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });

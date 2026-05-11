@@ -1001,14 +1001,16 @@ const Admin: React.FC = () => {
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Betting Locks</div>
             <p className="mt-1 text-[11px] leading-relaxed text-slate-400">Lock betting when an event is starting. Players cannot place new bets after this, but existing bets stay active and results can still be entered.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">For 2v2 tournaments, semifinals stay locked automatically. Finals open automatically once the final matchup is set.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3">
             {bettingControlEvents.map((event) => {
               const eventItems = state.bettableItems.filter((item) => item.eventId === event.id);
-              const openMarkets = eventItems.filter((item) => item.status === 'OPEN' && !item.bettingLocked && !event.bettingLocked).length;
+              const openMarkets = eventItems.filter((item) => item.status === 'OPEN' && !item.bettingLocked).length;
               const activeBets = state.bets.filter((bet) => eventItems.some((item) => item.id === bet.bettableItemId) && !bet.refunded && !bet.voided).length;
-              const isLocked = !!event.bettingLocked;
+              const readyMarkets = eventItems.filter((item) => item.status === 'OPEN');
+              const isLocked = readyMarkets.length > 0 && readyMarkets.every((item) => item.bettingLocked);
 
               return (
                 <div key={event.id} className={`rounded-2xl border p-4 ${isLocked ? 'border-amber-500/25 bg-amber-500/10' : 'border-slate-800 bg-slate-900'}`}>

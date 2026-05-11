@@ -281,8 +281,7 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules }) => {
   const renderScheduleBetButton = (itemId?: string) => {
     if (!itemId) return null;
     const item = state.bettableItems.find((entry) => entry.id === itemId);
-    const event = state.events.find((entry) => entry.id === item?.eventId);
-    const isBettingLocked = item?.status !== 'OPEN' || item?.bettingLocked || event?.bettingLocked;
+    const isBettingLocked = item?.status !== 'OPEN' || item?.bettingLocked;
     const hasUserBet = !!currentUser && state.bets.some((bet) => bet.playerId === currentUser.id && bet.bettableItemId === itemId && !bet.refunded && !bet.voided);
     const latestPlayer = currentUser ? state.players.find((player) => player.id === currentUser.id) || currentUser : null;
     const hasFunds = (latestPlayer?.balance || 0) >= 5;

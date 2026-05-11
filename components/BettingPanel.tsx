@@ -44,7 +44,7 @@ const BettingPanel: React.FC<BettingPanelProps> = ({ itemId, minimal = false, au
   const availableBalance = latestPlayer?.balance || 0;
   const event = state.events.find((entry) => entry.id === item.eventId);
   const matchup = event?.matchups?.find((entry) => entry.id === item.matchupId);
-  const isLocked = item.status !== 'OPEN' || item.bettingLocked || event?.bettingLocked;
+  const isLocked = item.status !== 'OPEN' || item.bettingLocked;
   const pickerIsOpen = alwaysOpen || isExpanded;
   const hasFunding = availableBalance >= 5;
   const isBetValid = !userBet && Number.isFinite(betAmount) && betAmount >= 5 && betAmount <= availableBalance;
