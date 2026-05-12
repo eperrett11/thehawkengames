@@ -361,6 +361,9 @@ const Main: React.FC = () => {
                         <p>
                           Your bankroll updates automatically when results are entered.
                         </p>
+                        <p>
+                          The Betting Leaderboard is ranked by <span className="font-bold text-white">total profit</span>, not current bankroll or number of bets won. Profit only counts settled bets that paid out. Voided bets do not count.
+                        </p>
                       </div>
                     </div>
                   </div>
