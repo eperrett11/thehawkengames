@@ -685,7 +685,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return normalizedState;
       } catch (error) {
         console.warn('Supabase save failed.', error);
-        window.alert('The shared tournament data changed before this save finished. Refresh and try again.');
+        window.alert('Odds changed. Please confirm your bet again.');
         throw error;
       }
     }
