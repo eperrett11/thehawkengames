@@ -541,7 +541,7 @@ const Admin: React.FC = () => {
   const shouldChooseIndividualWinner = (item?: BettableItem) => {
     if (!item) return false;
     const event = state.events.find((entry) => entry.id === item.eventId);
-    if (!event || event.type === EventType.AGGREGATE) return false;
+    if (!event || event.type !== EventType.PAIRED) return false;
 
     const matchup = event.matchups?.find((entry) => entry.id === item.matchupId);
     return matchup?.round === 'Semifinal' || matchup?.round === 'Final';
@@ -550,8 +550,8 @@ const Admin: React.FC = () => {
   const getRequiredIndividualWinnerCount = (item?: BettableItem) => {
     if (!item) return 0;
     const event = state.events.find((entry) => entry.id === item.eventId);
-    if (!event || event.type === EventType.AGGREGATE) return 0;
-    return event.type === EventType.PAIRED ? 2 : 4;
+    if (!event || event.type !== EventType.PAIRED) return 0;
+    return 2;
   };
 
   const selectWinner = (item: BettableItem, optionId: string) => {
