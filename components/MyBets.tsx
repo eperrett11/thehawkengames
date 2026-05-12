@@ -164,7 +164,7 @@ const MyBets: React.FC = () => {
       <div className="space-y-2.5">
         {rows.map((row) => {
           const profit = row.payout - row.amount;
-          const resultLabel = row.refunded ? 'Returned' : row.won ? 'Won' : 'Lost';
+          const resultLabel = row.refunded ? 'Returned' : row.won ? 'Profit' : 'Loss';
           const resultValue = row.refunded ? row.amount : row.won ? Math.max(0, profit) : row.amount;
           const resultPrefix = row.refunded ? '' : row.won ? '+' : '-';
           const resultColor = row.refunded ? 'text-slate-300' : row.won ? 'text-emerald-400' : 'text-rose-300';
@@ -185,9 +185,9 @@ const MyBets: React.FC = () => {
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  {showResultBadge ? (
-                    <div className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${row.refunded ? 'bg-slate-700/60 text-slate-200' : row.won ? 'bg-emerald-500/12 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                      {row.refunded ? 'Void' : row.won ? 'Won' : 'Lost'}
+                  {showResultBadge && row.refunded ? (
+                    <div className="rounded-full bg-slate-700/60 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-200">
+                      Void
                     </div>
                   ) : null}
                   {showResultBadge ? (
