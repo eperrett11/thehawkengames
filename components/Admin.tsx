@@ -104,7 +104,7 @@ const createMatchupDrafts = (state: TournamentState): MatchupDraftMap => {
 };
 
 const Admin: React.FC = () => {
-  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings } = useTournament();
+  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, resetTournament } = useTournament();
   const [view, setView] = useState<AdminView>('Events');
   const [editingTeams, setEditingTeams] = useState<Team[]>(state.teams);
   const [selectedWinner, setSelectedWinner] = useState<{ itemId: string; optId: string } | null>(null);
@@ -377,10 +377,23 @@ const Admin: React.FC = () => {
     alert(`${player.name}'s PIN has been reset.`);
   };
 
-  const resetAll = () => {
-    if (window.confirm('Nuclear Option: This will clear all progress. Continue?')) {
+  const resetAll = async () => {
+    const confirmed = window.confirm(
+      'Reset the entire app to a fresh start? This clears all bets, bankrolls, scores, winners, PINs, roster edits, sports day/visibility changes, and betting locks for everyone.'
+    );
+    if (!confirmed) return;
+
+    const typedConfirmation = window.prompt('Type RESET to confirm.');
+    if (typedConfirmation !== 'RESET') return;
+
+    try {
+      await resetTournament();
       localStorage.clear();
+      alert('The app has been reset to a fresh start.');
       window.location.reload();
+    } catch (error) {
+      console.warn('Full app reset failed.', error);
+      alert('Reset failed. Refresh and try again.');
     }
   };
 
@@ -868,7 +881,7 @@ const Admin: React.FC = () => {
           ))}
 
           <button onClick={handleUpdateTeams} className="w-full rounded-xl bg-white py-5 text-lg font-black uppercase tracking-widest text-black transition-transform hover:scale-[1.02]">Save Rosters & Update Events</button>
-          <button onClick={resetAll} className="mt-12 w-full rounded-lg border border-rose-900 py-3 text-[10px] font-black uppercase tracking-widest text-rose-500">Reset Entire App (Debug)</button>
+          <button onClick={() => void resetAll()} className="mt-12 w-full rounded-lg border border-rose-900 py-3 text-[10px] font-black uppercase tracking-widest text-rose-500">Reset Entire App To Fresh Start</button>
         </div>
       ) : view === 'Sports' ? (
         <div className="space-y-4">

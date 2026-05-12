@@ -20,6 +20,7 @@ interface TournamentContextType {
   setEventBettingLocked: (eventId: string, bettingLocked: boolean) => Promise<void>;
   saveMatchupSettings: (settings: { eventId: string; matchups: { matchupId: string; sides: { teamId: string; playerIds: string[] }[] }[] }[]) => Promise<void>;
   voidEventBets: (eventId: string) => Promise<void>;
+  resetTournament: () => Promise<void>;
   isLoading: boolean;
   refresh: () => void;
 }
@@ -866,6 +867,17 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await saveState(rebuiltState);
   };
 
+  const resetTournament = async () => {
+    if (isBackendEnabled) {
+      await refreshRemoteState({ force: true });
+    }
+
+    const freshState = createInitialState(createPlayers(), createDefaultTeams());
+    await saveState(freshState);
+    setCurrentUser(null);
+    localStorage.removeItem('hawken_user');
+  };
+
   const addFunds = async (playerId: string, amount: number) => {
     if (!Number.isFinite(amount) || amount < 20) return;
 
@@ -1073,7 +1085,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });
   };
   return (
-    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidEventBets, isLoading, refresh }}>
+    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidEventBets, resetTournament, isLoading, refresh }}>
       {children}
     </TournamentContext.Provider>
   );
