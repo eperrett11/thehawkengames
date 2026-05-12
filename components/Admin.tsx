@@ -518,6 +518,30 @@ const Admin: React.FC = () => {
     return label;
   };
 
+  const getBetPoolMatchupLabel = (item: BettableItem, event?: Event) => {
+    if (!event) return item.options.map((option) => cleanScoreOptionLabel(option.label)).join(' vs ');
+
+    const matchup = event.matchups?.find((entry) => entry.id === item.matchupId);
+    if (matchup) {
+      const sideLabels = [0, 1].map((sideIndex) => {
+        const participantNames = matchup.participantPlayers?.[sideIndex] || [];
+        if (participantNames.length > 0) return participantNames.join(' & ');
+
+        const teamId = matchup.participantTeamIds?.[sideIndex] || matchup.participantIds?.[sideIndex] || '';
+        const team = state.teams.find((entry) => entry.id === teamId);
+        if (team) return team.name;
+
+        return matchup.participants?.[sideIndex] || item.options[sideIndex]?.label || 'TBD';
+      });
+
+      return sideLabels.join(' vs ');
+    }
+
+    return item.options
+      .map((option) => cleanScoreOptionLabel(getOptionDisplayLabel(option.label, option.id)))
+      .join(' vs ');
+  };
+
   const cleanScoreOptionLabel = (label: string) => (
     label
       .replace(/^[A-Za-z]+ Team [AB]:\s*/i, '')
@@ -1101,6 +1125,7 @@ const Admin: React.FC = () => {
           <div className="space-y-3">
             {voidableBetPools.map(({ item, event, activeBets, totalWagered }) => {
               const eventName = event?.name || 'Unknown Event';
+              const matchupLabel = getBetPoolMatchupLabel(item, event);
               const bettors = activeBets
                 .map((bet) => state.players.find((player) => player.id === bet.playerId)?.name || 'Unknown')
                 .filter((name, index, names) => names.indexOf(name) === index)
@@ -1113,6 +1138,9 @@ const Admin: React.FC = () => {
                       <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Day {item.day}</div>
                       <div className="mt-1 truncate text-lg font-black italic uppercase text-white">{eventName}</div>
                       <div className="mt-1 text-[11px] font-black uppercase tracking-[0.1em] text-slate-300">{formatAdminItemLabel(eventName, item.label)}</div>
+                      <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] font-black uppercase leading-snug text-white">
+                        {matchupLabel}
+                      </div>
                       <div className="mt-2 text-[10px] leading-relaxed text-slate-500">
                         {activeBets.length} active bet{activeBets.length === 1 ? '' : 's'} from {bettors || 'players'}
                       </div>
