@@ -405,7 +405,10 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules, readOnly = false }) =>
     const highlightWinner = event?.status === EventStatus.COMPLETE;
     const hideBettingStats = eventType === EventType.PAIRED && match.round === 'Semifinal';
     const betItem = hideBettingStats ? undefined : getMatchupBetItem(eventId, match.id);
-    const potItem = hideBettingStats ? undefined : betItem || getAnyMatchupBetItem(eventId, match.id);
+    const anyPotItem = hideBettingStats ? undefined : getAnyMatchupBetItem(eventId, match.id);
+    const hasResolvedPotOptions = anyPotItem?.options.every((option) => option.id.trim() !== '' && option.id !== 'TBD' && option.label !== 'TBD');
+    const shouldHideLockedFinalPot = match.round === 'Final' && (!hasResolvedPotOptions || anyPotItem?.status === 'LOCKED');
+    const potItem = shouldHideLockedFinalPot ? undefined : betItem || anyPotItem;
     const totalPot = potItem ? getBetItemPot(potItem.id) : 0;
 
     return (
