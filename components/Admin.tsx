@@ -4,7 +4,7 @@ import { Team, EventStatus, EventType, TournamentState, Event, BettableItem } fr
 import MatchupsAdmin from './MatchupsAdmin';
 
 const MAX_TEAM_SIZE = 5;
-type AdminView = 'Teams' | 'Sports' | 'Matchups' | 'Events' | 'BettingLocks' | 'Bankroll' | 'Pins';
+type AdminView = 'Teams' | 'Sports' | 'Matchups' | 'Events' | 'BettingLocks' | 'Void' | 'Bankroll' | 'Pins';
 
 type MatchupSideDraft = {
   teamId: string;
@@ -104,7 +104,7 @@ const createMatchupDrafts = (state: TournamentState): MatchupDraftMap => {
 };
 
 const Admin: React.FC = () => {
-  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, resetTournament } = useTournament();
+  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidBettableItem, resetTournament } = useTournament();
   const [view, setView] = useState<AdminView>('Events');
   const [editingTeams, setEditingTeams] = useState<Team[]>(state.teams);
   const [selectedWinner, setSelectedWinner] = useState<{ itemId: string; optId: string } | null>(null);
@@ -159,6 +159,19 @@ const Admin: React.FC = () => {
     () => state.events.filter((event) => event.isVisible && event.status !== EventStatus.COMPLETE),
     [state.events]
   );
+
+  const voidableBetPools = useMemo(() => (
+    state.bettableItems
+      .map((item) => {
+        const event = state.events.find((entry) => entry.id === item.eventId);
+        const activeBets = state.bets.filter((bet) => bet.bettableItemId === item.id && !bet.refunded && !bet.voided);
+        const totalWagered = activeBets.reduce((sum, bet) => sum + bet.amount, 0);
+
+        return { item, event, activeBets, totalWagered };
+      })
+      .filter((pool) => pool.event && pool.activeBets.length > 0)
+      .sort((a, b) => (a.event?.day || 0) - (b.event?.day || 0) || (a.event?.name || '').localeCompare(b.event?.name || '') || a.item.label.localeCompare(b.item.label))
+  ), [state.bettableItems, state.events, state.bets]);
 
   useEffect(() => {
     setEditingSports(state.events.map((event) => ({ id: event.id, day: event.day, isVisible: event.isVisible, name: event.name })));
@@ -395,6 +408,26 @@ const Admin: React.FC = () => {
       console.warn('Full app reset failed.', error);
       alert('Reset failed. Refresh and try again.');
     }
+  };
+
+  const handleVoidBettableItem = async (item: BettableItem) => {
+    const event = state.events.find((entry) => entry.id === item.eventId);
+    const activeBets = state.bets.filter((bet) => bet.bettableItemId === item.id && !bet.refunded && !bet.voided);
+    const totalWagered = activeBets.reduce((sum, bet) => sum + bet.amount, 0);
+
+    if (activeBets.length === 0) {
+      alert('There are no active bets to void for this pool.');
+      return;
+    }
+
+    const label = event ? `${event.name} - ${formatAdminItemLabel(event.name, item.label)}` : item.label;
+    const confirmed = window.confirm(
+      `Void ${activeBets.length} bet${activeBets.length === 1 ? '' : 's'} for ${label}? This returns $${totalWagered.toFixed(2)} total to player bankrolls and marks those bets as Void.`
+    );
+    if (!confirmed) return;
+
+    await voidBettableItem(item.id);
+    alert('Bets voided and wagers returned.');
   };
 
   const discardCurrentViewChanges = () => {
@@ -780,6 +813,7 @@ const Admin: React.FC = () => {
           <button onClick={() => void handleViewChange('Sports')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Sports' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Sports</button>
           <button onClick={() => void handleViewChange('Matchups')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Matchups' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Matchups</button>
           <button onClick={() => void handleViewChange('BettingLocks')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'BettingLocks' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Betting Locks</button>
+          <button onClick={() => void handleViewChange('Void')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Void' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Void Bets</button>
           <button onClick={() => void handleViewChange('Bankroll')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Bankroll' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Bankroll</button>
           <button onClick={() => void handleViewChange('Pins')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Pins' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Reset PIN</button>
         </div>
@@ -1054,6 +1088,55 @@ const Admin: React.FC = () => {
 
           {bettingControlEvents.length === 0 ? (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm italic text-slate-500">No active visible events to lock.</div>
+          ) : null}
+        </div>
+      ) : view === 'Void' ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Void Bets</div>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">Use this if a matchup or event pool is canceled. Voiding returns active wagers to player bankrolls and marks those bets as Void.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-amber-300/80">This does not remove scores. Only use before entering a result for that betting pool.</p>
+          </div>
+
+          <div className="space-y-3">
+            {voidableBetPools.map(({ item, event, activeBets, totalWagered }) => {
+              const eventName = event?.name || 'Unknown Event';
+              const bettors = activeBets
+                .map((bet) => state.players.find((player) => player.id === bet.playerId)?.name || 'Unknown')
+                .filter((name, index, names) => names.indexOf(name) === index)
+                .join(', ');
+
+              return (
+                <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Day {item.day}</div>
+                      <div className="mt-1 truncate text-lg font-black italic uppercase text-white">{eventName}</div>
+                      <div className="mt-1 text-[11px] font-black uppercase tracking-[0.1em] text-slate-300">{formatAdminItemLabel(eventName, item.label)}</div>
+                      <div className="mt-2 text-[10px] leading-relaxed text-slate-500">
+                        {activeBets.length} active bet{activeBets.length === 1 ? '' : 's'} from {bettors || 'players'}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Wagered</div>
+                      <div className="mt-1 text-xl font-black text-emerald-400">${totalWagered.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleVoidBettableItem(item)}
+                    className="mt-4 w-full rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-rose-300"
+                  >
+                    Void Bets For This Matchup
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {voidableBetPools.length === 0 ? (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm italic text-slate-500">No active bets to void.</div>
           ) : null}
         </div>
       ) : view === 'Bankroll' ? (

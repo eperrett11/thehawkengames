@@ -20,6 +20,7 @@ interface TournamentContextType {
   setEventBettingLocked: (eventId: string, bettingLocked: boolean) => Promise<void>;
   saveMatchupSettings: (settings: { eventId: string; matchups: { matchupId: string; sides: { teamId: string; playerIds: string[] }[] }[] }[]) => Promise<void>;
   voidEventBets: (eventId: string) => Promise<void>;
+  voidBettableItem: (itemId: string) => Promise<void>;
   resetTournament: () => Promise<void>;
   isLoading: boolean;
   refresh: () => void;
@@ -1013,6 +1014,30 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await saveState({ ...state, players, bets });
   };
 
+  const voidBettableItem = async (itemId: string) => {
+    const hasVoidableBets = state.bets.some((bet) => bet.bettableItemId === itemId && !bet.refunded && !bet.voided);
+    if (!hasVoidableBets) return;
+
+    const players = state.players.map((player) => ({ ...player }));
+    const bets = state.bets.map((bet) => {
+      if (bet.bettableItemId !== itemId || bet.refunded || bet.voided) return { ...bet };
+
+      const player = players.find((entry) => entry.id === bet.playerId);
+      if (player && bet.payout === undefined) {
+        player.balance += bet.amount;
+      }
+
+      return {
+        ...bet,
+        payout: bet.amount,
+        refunded: true,
+        voided: true
+      };
+    });
+
+    await saveState({ ...state, players, bets });
+  };
+
   const saveMatchupSettings = async (settings: { eventId: string; matchups: { matchupId: string; sides: { teamId: string; playerIds: string[] }[] }[] }[]) => {
     const settingsMap = new Map<string, { matchupId: string; sides: { teamId: string; playerIds: string[] }[] }[]>(settings.map((entry) => [entry.eventId, entry.matchups]));
     const hasUnvoidedBets = state.bets.some((bet) => {
@@ -1085,7 +1110,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await saveState({ ...state, events: updatedEvents, bettableItems: updatedItems });
   };
   return (
-    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidEventBets, resetTournament, isLoading, refresh }}>
+    <TournamentContext.Provider value={{ state, currentUser, setCurrentUser, loginPlayer, placeBet, settleItem, updateTeams, addFunds, adjustBankroll, resetPlayerPin, setEventVisibility, setEventDay, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidEventBets, voidBettableItem, resetTournament, isLoading, refresh }}>
       {children}
     </TournamentContext.Provider>
   );
