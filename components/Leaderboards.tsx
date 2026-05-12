@@ -92,17 +92,19 @@ const Leaderboard: React.FC = () => {
           return item?.winnerOptionId === bet.optionId;
         }).length;
         const lostCount = paidOutSettledBets.length - wonCount;
+        const totalProfit = paidOutSettledBets.reduce((sum, bet) => sum + ((bet.payout || 0) - bet.amount), 0);
 
         return {
           ...player,
           activeCount,
           wonCount,
           lostCount,
+          totalProfit,
           teamColor: team?.color || 'Team',
           colorHex: team?.colorHex || '#64748b'
         };
       })
-      .sort((a, b) => b.wonCount - a.wonCount || a.name.localeCompare(b.name));
+      .sort((a, b) => b.totalProfit - a.totalProfit || b.wonCount - a.wonCount || a.name.localeCompare(b.name));
   }, [state.players, state.teams, state.bets, state.bettableItems]);
 
   const leaderboardTabClass = (active: boolean) => (
@@ -252,8 +254,10 @@ const Leaderboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="min-w-0 text-right">
-                  <div className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-500">Bankroll</div>
-                  <div className="mt-1 whitespace-nowrap text-[17px] font-black leading-none text-emerald-400">${player.balance.toFixed(2)}</div>
+                  <div className="text-[7px] font-black uppercase tracking-[0.1em] text-slate-500">Profit</div>
+                  <div className={`mt-1 whitespace-nowrap text-[17px] font-black leading-none ${player.totalProfit < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {player.totalProfit < 0 ? '-' : ''}${Math.abs(player.totalProfit).toFixed(2)}
+                  </div>
                 </div>
               </div>
             </div>
