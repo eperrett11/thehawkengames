@@ -364,6 +364,9 @@ const Main: React.FC = () => {
                         <p>
                           The Betting Leaderboard is ranked by <span className="font-bold text-white">total profit</span>, not current bankroll or number of bets won. Profit only counts settled bets that paid out. Voided bets do not count.
                         </p>
+                        <p>
+                          At the end of the weekend, the commissioner will Venmo each player their <span className="font-bold text-white">final bankroll amount</span>. Your final bankroll is the amount you cash out with.
+                        </p>
                       </div>
                     </div>
                   </div>
