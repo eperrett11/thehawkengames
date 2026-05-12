@@ -382,16 +382,16 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules, readOnly = false }) =>
                   {segment.members.map((member, idx) => (
                     <div key={`${match.id}-${sideIndex}-${segment.teamId}-${idx}`}>{member}</div>
                   ))}
-                  {oddsStat && segmentIndex === 0 ? (
-                    <div className={BET_STAT_CLASS}>
-                      <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
-                      <span className="mx-1.5 text-white/25">|</span>
-                      <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
-                    </div>
-                  ) : null}
                 </div>
               </div>
             ))}
+            {oddsStat ? (
+              <div className={`${BET_STAT_CLASS} mx-1`}>
+                <span className="text-white/60">{oddsStat.percentage.toFixed(0)}%</span>
+                <span className="mx-1.5 text-white/25">|</span>
+                <span className="text-emerald-300/90">${oddsStat.optionPool.toFixed(0)}</span>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
