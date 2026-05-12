@@ -242,6 +242,9 @@ const MyBets: React.FC = () => {
           <p className="text-[11px] leading-relaxed text-slate-400">
             Players start with a $0.00 bankroll. To fund betting, Venmo the commissioner. After payment is confirmed, the commissioner will add those funds to your account in the app.
           </p>
+          <p className="text-[11px] leading-relaxed text-slate-400">
+            At the end of the weekend, the commissioner will Venmo each player their final bankroll amount. Your final bankroll is the amount you cash out with.
+          </p>
         </div>
       </section>
 
