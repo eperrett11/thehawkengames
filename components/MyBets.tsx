@@ -190,7 +190,7 @@ const MyBets: React.FC = () => {
                       Void
                     </div>
                   ) : null}
-                  {showResultBadge ? (
+                  {showResultBadge && !row.refunded ? (
                     <div className="mt-3">
                       <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{resultLabel}</div>
                       <div className={`mt-1 whitespace-nowrap text-2xl font-black leading-none ${resultColor}`}>
@@ -198,10 +198,12 @@ const MyBets: React.FC = () => {
                       </div>
                     </div>
                   ) : null}
-                  <div className={showResultBadge ? 'mt-2' : 'mt-3'}>
-                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Wager</div>
-                    <div className="mt-1 text-lg font-black leading-none text-white">${row.amount.toFixed(0)}</div>
-                  </div>
+                  {!row.refunded ? (
+                    <div className={showResultBadge ? 'mt-2' : 'mt-3'}>
+                      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Wager</div>
+                      <div className="mt-1 text-lg font-black leading-none text-white">${row.amount.toFixed(0)}</div>
+                    </div>
+                  ) : null}
                   {!row.settled && row.currentPayout !== undefined ? (
                     <div className="mt-2">
                       <div className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Projected Payout</div>
