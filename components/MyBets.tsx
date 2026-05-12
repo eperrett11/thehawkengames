@@ -162,41 +162,59 @@ const MyBets: React.FC = () => {
 
     return (
       <div className="space-y-2.5">
-        {rows.map((row) => (
-          <div key={row.id} className="rounded-2xl border border-slate-800 bg-[linear-gradient(135deg,rgba(15,23,42,0.96)_0%,rgba(15,23,42,0.72)_100%)] p-3.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{row.eventName}</div>
-                <div className="mt-1 text-[15px] font-black italic uppercase tracking-tight text-white">{formatBetLabel(row.eventName, row.itemLabel)}</div>
-                <div className="mt-2">
-                  <span
-                    className="inline-flex rounded-full border border-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em] text-white"
-                    style={{ background: row.pickTeamColor ? `linear-gradient(135deg, ${row.pickTeamColor}CC 0%, rgba(15,23,42,0.58) 100%)` : 'rgba(51,65,85,0.45)' }}
-                  >
-                    {row.pickLabel}
-                  </span>
+        {rows.map((row) => {
+          const profit = row.payout - row.amount;
+          const resultLabel = row.refunded ? 'Returned' : row.won ? 'Won' : 'Lost';
+          const resultValue = row.refunded ? row.amount : row.won ? Math.max(0, profit) : row.amount;
+          const resultPrefix = row.refunded ? '' : row.won ? '+' : '-';
+          const resultColor = row.refunded ? 'text-slate-300' : row.won ? 'text-emerald-400' : 'text-rose-300';
+
+          return (
+            <div key={row.id} className="rounded-2xl border border-slate-800 bg-[linear-gradient(135deg,rgba(15,23,42,0.96)_0%,rgba(15,23,42,0.72)_100%)] p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{row.eventName}</div>
+                  <div className="mt-1 text-[15px] font-black italic uppercase tracking-tight text-white">{formatBetLabel(row.eventName, row.itemLabel)}</div>
+                  <div className="mt-2">
+                    <span
+                      className="inline-flex rounded-full border border-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em] text-white"
+                      style={{ background: row.pickTeamColor ? `linear-gradient(135deg, ${row.pickTeamColor}CC 0%, rgba(15,23,42,0.58) 100%)` : 'rgba(51,65,85,0.45)' }}
+                    >
+                      {row.pickLabel}
+                    </span>
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  {showResultBadge ? (
+                    <div className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${row.refunded ? 'bg-slate-700/60 text-slate-200' : row.won ? 'bg-emerald-500/12 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                      {row.refunded ? 'Void' : row.won ? 'Won' : 'Lost'}
+                    </div>
+                  ) : null}
+                  {showResultBadge ? (
+                    <div className="mt-3">
+                      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{resultLabel}</div>
+                      <div className={`mt-1 whitespace-nowrap text-2xl font-black leading-none ${resultColor}`}>
+                        {resultPrefix}${resultValue.toFixed(2)}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className={showResultBadge ? 'mt-2' : 'mt-3'}>
+                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Wager</div>
+                    <div className="mt-1 text-lg font-black leading-none text-white">${row.amount.toFixed(0)}</div>
+                  </div>
+                  {!row.settled && row.currentPayout !== undefined ? (
+                    <div className="mt-2">
+                      <div className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Projected Payout</div>
+                      <div className={`mt-0.5 text-sm font-black uppercase leading-none ${row.wouldVoid ? 'text-slate-400' : 'text-emerald-400'}`}>
+                        {row.wouldVoid ? 'Void' : `$${row.currentPayout.toFixed(2)}`}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              <div className="shrink-0 text-right">
-                {showResultBadge ? (
-                  <div className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${row.refunded ? 'bg-slate-700/60 text-slate-200' : row.won ? 'bg-emerald-500/12 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                    {row.refunded ? 'Void' : row.won ? 'Won' : 'Lost'}
-                  </div>
-                ) : null}
-                <div className="mt-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Wager</div>
-                <div className="mt-1 text-2xl font-black leading-none text-white">${row.amount.toFixed(0)}</div>
-                {!row.settled && row.currentPayout !== undefined ? (
-                  <div className="mt-2">
-                    <div className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">Projected Payout</div>
-                    <div className={`mt-0.5 text-sm font-black uppercase leading-none ${row.wouldVoid ? 'text-slate-400' : 'text-emerald-400'}`}>
-                      {row.wouldVoid ? 'Void' : `$${row.currentPayout.toFixed(2)}`}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
