@@ -14,6 +14,9 @@ type MatchupDraft = {
 
 type MatchupDraftMap = Record<string, MatchupDraft[]>;
 
+const SUB_PLAYER_ID = 'SUB';
+const SUB_PLAYER_NAME = 'SUB';
+
 const getEditableOpeningMatchups = (event: Event) => {
   if (!event.matchups) return [];
   if (event.type === EventType.PAIRED) return event.matchups.filter((matchup) => matchup.round === 'Quarterfinal');
@@ -35,6 +38,7 @@ const formatMatchupLabel = (eventName: string, gameNumber: number) => {
 
 const createMatchupDrafts = (state: TournamentState): MatchupDraftMap => {
   const getPlayerIdByName = (name: string, teamId: string) => {
+    if (name === SUB_PLAYER_NAME) return SUB_PLAYER_ID;
     const team = state.teams.find((entry) => entry.id === teamId);
     if (!team) return '';
     return team.playerIds.find((playerId) => state.players.find((player) => player.id === playerId)?.name === name) || '';
@@ -93,7 +97,7 @@ const MatchupsAdmin: React.FC = () => {
     }
   }, [editableEvents, hasInitializedOpenEvent, openEventId]);
 
-  const getPlayerName = (playerId: string) => state.players.find((player) => player.id === playerId)?.name || 'Unknown';
+  const getPlayerName = (playerId: string) => playerId === SUB_PLAYER_ID ? SUB_PLAYER_NAME : state.players.find((player) => player.id === playerId)?.name || 'Unknown';
 
   const getUnvoidedEventBets = (eventId: string) => {
     const eventItemIds = new Set(state.bettableItems.filter((item) => item.eventId === eventId).map((item) => item.id));
@@ -187,7 +191,8 @@ const MatchupsAdmin: React.FC = () => {
             alert(`${event.name} requires ${requiredPlayers} players selected for each side.`);
             return;
           }
-          if (new Set(playerIds).size !== playerIds.length) {
+          const nonSubPlayerIds = playerIds.filter((playerId) => playerId !== SUB_PLAYER_ID);
+          if (new Set(nonSubPlayerIds).size !== nonSubPlayerIds.length) {
             alert(`Each side in ${event.name} must use distinct players.`);
             return;
           }
@@ -286,6 +291,7 @@ const MatchupsAdmin: React.FC = () => {
                                 {Array.from({ length: requiredPlayers }).map((_, playerIndex) => (
                                   <select disabled={isLockedByBets} key={`${matchupDraft.matchupId}-${sideIndex}-${playerIndex}`} value={side.playerIds[playerIndex] || ''} onChange={(e) => updateMatchupPlayer(event.id, matchupDraft.matchupId, sideIndex, playerIndex, e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-[11px] font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-45">
                                     <option value="">Select Player {playerIndex + 1}</option>
+                                    <option value={SUB_PLAYER_ID}>SUB</option>
                                     {teamPlayerIds.map((playerId) => <option key={playerId} value={playerId}>{getPlayerName(playerId)}</option>)}
                                   </select>
                                 ))}

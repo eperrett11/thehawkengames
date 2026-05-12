@@ -49,6 +49,8 @@ const PAIRED_LAYOUT_MODEL_KEY = 'hawken_games_paired_layout_v3';
 const ACTIVE_ROSTER_MODEL_KEY = 'hawken_games_active_roster_no_sam_v1';
 const REMOVED_EVENT_IDS = new Set<string>();
 const INITIAL_BALANCE = 0;
+const SUB_PLAYER_ID = 'SUB';
+const SUB_PLAYER_NAME = 'SUB';
 const FINAL_TEAM_PLAYER_IDS: Record<string, string[]> = {
   t1: ['p0', 'p5', 'p10', 'p7'],
   t2: ['p8', 'p9', 'p12', 'p6'],
@@ -197,7 +199,9 @@ const buildMatchupOptions = (matchup: Matchup) => {
   }));
 };
 
-const getPlayerNamesByIds = (players: Player[], playerIds: string[]) => playerIds.map((playerId) => players.find((player) => player.id === playerId)?.name || 'Unknown');
+const getPlayerNamesByIds = (players: Player[], playerIds: string[]) => playerIds.map((playerId) => (
+  playerId === SUB_PLAYER_ID ? SUB_PLAYER_NAME : players.find((player) => player.id === playerId)?.name || 'Unknown'
+));
 
 const getTeamName = (teams: Team[], teamId: string) => teams.find((team) => team.id === teamId)?.name || 'TBD';
 
