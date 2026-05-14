@@ -4,7 +4,7 @@ import { Team, EventStatus, EventType, TournamentState, Event, BettableItem } fr
 import MatchupsAdmin from './MatchupsAdmin';
 
 const MAX_TEAM_SIZE = 5;
-type AdminView = 'Teams' | 'Sports' | 'Matchups' | 'Events' | 'BettingLocks' | 'Void' | 'Bankroll' | 'Pins';
+type AdminView = 'Teams' | 'Sports' | 'Matchups' | 'Events' | 'BettingLocks' | 'Void' | 'RecentBets' | 'Bankroll' | 'Pins';
 
 type MatchupSideDraft = {
   teamId: string;
@@ -548,6 +548,27 @@ const Admin: React.FC = () => {
       .replace(/\b(Blue|Green|Red|Purple) Team [AB]\b/gi, '$1 Team')
   );
 
+  const recentBets = useMemo(() => (
+    [...state.bets]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 30)
+      .map((bet) => {
+        const player = state.players.find((entry) => entry.id === bet.playerId);
+        const item = state.bettableItems.find((entry) => entry.id === bet.bettableItemId);
+        const event = item ? state.events.find((entry) => entry.id === item.eventId) : undefined;
+        const option = item?.options.find((entry) => entry.id === bet.optionId);
+
+        return {
+          bet,
+          playerName: player?.name || 'Unknown',
+          eventName: event?.name || 'Unknown Event',
+          gameLabel: item && event ? formatAdminItemLabel(event.name, item.label) : item?.label || 'Unknown Matchup',
+          matchupLabel: item ? getBetPoolMatchupLabel(item, event) : 'Unknown matchup',
+          pickLabel: cleanScoreOptionLabel(getOptionDisplayLabel(option?.label || bet.optionId, option?.id || bet.optionId))
+        };
+      })
+  ), [state.bets, state.players, state.bettableItems, state.events]);
+
   const getOptionTeams = (label: string, optionId?: string) => {
     const normalizedLabel = label.toLowerCase();
     const directTeamIds = (optionId || label).split('+').filter(Boolean);
@@ -837,6 +858,7 @@ const Admin: React.FC = () => {
           <button onClick={() => void handleViewChange('Sports')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Sports' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Sports</button>
           <button onClick={() => void handleViewChange('Matchups')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Matchups' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Matchups</button>
           <button onClick={() => void handleViewChange('BettingLocks')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'BettingLocks' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Betting Locks</button>
+          <button onClick={() => void handleViewChange('RecentBets')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'RecentBets' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Recent Bets</button>
           <button onClick={() => void handleViewChange('Void')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Void' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Void Bets</button>
           <button onClick={() => void handleViewChange('Bankroll')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Bankroll' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Bankroll</button>
           <button onClick={() => void handleViewChange('Pins')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Pins' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Reset PIN</button>
@@ -1112,6 +1134,58 @@ const Admin: React.FC = () => {
 
           {bettingControlEvents.length === 0 ? (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm italic text-slate-500">No active visible events to lock.</div>
+          ) : null}
+        </div>
+      ) : view === 'RecentBets' ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recent Bets</div>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">Newest bets appear first. Use this as the live commissioner feed while people are placing wagers.</p>
+          </div>
+
+          <div className="space-y-3">
+            {recentBets.map(({ bet, playerName, eventName, gameLabel, matchupLabel, pickLabel }) => {
+              const placedAt = new Date(bet.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+              const statusLabel = bet.voided ? 'Void' : bet.refunded ? 'Refunded' : bet.payout !== undefined ? 'Settled' : 'Active';
+
+              return (
+                <div key={bet.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-sm font-black uppercase text-white">{playerName}</div>
+                        <div className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] ${
+                          statusLabel === 'Active'
+                            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                            : statusLabel === 'Void' || statusLabel === 'Refunded'
+                              ? 'border-slate-700 bg-slate-950 text-slate-400'
+                              : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                        }`}>
+                          {statusLabel}
+                        </div>
+                      </div>
+                      <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-300">
+                        {eventName} - {gameLabel}
+                      </div>
+                      <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] font-black uppercase leading-snug text-slate-200">
+                        {matchupLabel}
+                      </div>
+                      <div className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                        Pick: <span className="text-slate-300">{pickLabel}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{placedAt}</div>
+                      <div className="mt-2 text-2xl font-black text-emerald-400">${bet.amount.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {recentBets.length === 0 ? (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm italic text-slate-500">No bets placed yet.</div>
           ) : null}
         </div>
       ) : view === 'Void' ? (
