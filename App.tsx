@@ -216,6 +216,8 @@ const Main: React.FC = () => {
     const alerts: DisplayAlert[] = [];
 
     (state.appAlerts || []).forEach((manualAlert) => {
+      if (manualAlert.targetPlayerId && manualAlert.targetPlayerId !== currentUser?.id) return;
+
       const event = visibleEventMap.get(manualAlert.eventId);
       if (!event) return;
 
@@ -290,7 +292,7 @@ const Main: React.FC = () => {
     });
 
     return alerts.sort((a, b) => b.createdAt - a.createdAt);
-  }, [state.events, state.bettableItems, state.bets, state.appAlerts]);
+  }, [state.events, state.bettableItems, state.bets, state.appAlerts, currentUser?.id]);
 
   const dismissAlert = (alertId: string) => {
     setDismissedAlertIds((current) => {

@@ -86,6 +86,7 @@ export interface AppAlert {
   message: string;
   eventId: string;
   createdAt: number;
+  targetPlayerId?: string;
 }
 
 export interface TournamentState {
