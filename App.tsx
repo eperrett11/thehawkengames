@@ -255,10 +255,13 @@ const Main: React.FC = () => {
       itemBets
         .filter((bet) => bet.amount >= 20)
         .forEach((bet) => {
+          const selectedOption = item.options.find((option) => option.id === bet.optionId);
+          const selectedSide = selectedOption ? formatAlertSideLabel(selectedOption.label) : 'one side';
+
           alerts.push({
             id: `auto-big-bet-${bet.id}`,
             title: 'Big Bet Alert',
-            message: `Someone just placed a $${bet.amount.toFixed(0)} bet on ${eventLabel}.`,
+            message: `Someone just placed a $${bet.amount.toFixed(0)} bet on ${selectedSide} in ${eventLabel}.`,
             eventId: event.id,
             day: event.day,
             createdAt: bet.timestamp
