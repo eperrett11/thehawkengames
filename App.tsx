@@ -71,9 +71,22 @@ const formatAlertGameLabel = (eventName: string, itemLabel: string) => {
   return itemLabel;
 };
 
-const formatAlertSideLabel = (label: string) => {
+const formatAlertSideLabel = (label: string, optionId = '', teams: { id: string; name: string }[] = []) => {
   const pairedMatch = label.match(/^([A-Za-z]+ Team [AB]):\s*(.+)$/i);
   if (pairedMatch) return `${pairedMatch[1]} (${pairedMatch[2]})`;
+
+  const directTeamIds = (optionId || label).split('+').filter(Boolean);
+  const directTeams = directTeamIds
+    .map((teamId) => teams.find((team) => team.id.toLowerCase() === teamId.toLowerCase()))
+    .filter(Boolean) as { id: string; name: string }[];
+
+  if (directTeams.length > 0 && directTeams.length === directTeamIds.length) {
+    return directTeams.map((team) => team.name).join(' + ');
+  }
+
+  const directTeam = teams.find((team) => team.id.toLowerCase() === label.toLowerCase());
+  if (directTeam) return directTeam.name;
+
   return label;
 };
 
@@ -256,7 +269,7 @@ const Main: React.FC = () => {
         .filter((bet) => bet.amount >= 20)
         .forEach((bet) => {
           const selectedOption = item.options.find((option) => option.id === bet.optionId);
-          const selectedSide = selectedOption ? formatAlertSideLabel(selectedOption.label) : 'one side';
+          const selectedSide = selectedOption ? formatAlertSideLabel(selectedOption.label, selectedOption.id, state.teams) : 'one side';
 
           alerts.push({
             id: `auto-big-bet-${bet.id}`,
@@ -286,7 +299,7 @@ const Main: React.FC = () => {
           alerts.push({
             id: `auto-underdog-${item.id}-${lowSide.option.id}`,
             title: 'High Odds Alert',
-            message: `${formatAlertSideLabel(lowSide.option.label)} only has ${lowSide.percentage.toFixed(0)}% of the bets. Betting on the underdog pays out a ${payoutReturn.toFixed(0)}% return.`,
+            message: `${formatAlertSideLabel(lowSide.option.label, lowSide.option.id, state.teams)} only has ${lowSide.percentage.toFixed(0)}% of the bets. Betting on the underdog pays out a ${payoutReturn.toFixed(0)}% return.`,
             eventId: event.id,
             day: event.day,
             createdAt: latestBetTime || Date.now()
@@ -309,7 +322,7 @@ const Main: React.FC = () => {
             alerts.push({
               id: `auto-underdog-empty-${item.id}-${emptySide.option.id}`,
               title: 'Underdog Alert',
-              message: `No one has bet on ${formatAlertSideLabel(emptySide.option.label)} in ${eventLabel} yet. A $5 bet would currently pay out $${projectedPayout.toFixed(0)} if they win.`,
+              message: `No one has bet on ${formatAlertSideLabel(emptySide.option.label, emptySide.option.id, state.teams)} in ${eventLabel} yet. A $5 bet would currently pay out $${projectedPayout.toFixed(0)} if they win.`,
               eventId: event.id,
               day: event.day,
               createdAt: latestBetTime || Date.now()
