@@ -223,7 +223,7 @@ const Main: React.FC = () => {
 
       alerts.push({
         id: manualAlert.id,
-        title: 'Commissioner Alert',
+        title: manualAlert.title || 'Event Alert',
         message: manualAlert.message,
         eventId: event.id,
         day: event.day,

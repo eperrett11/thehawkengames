@@ -83,6 +83,7 @@ export interface Bet {
 
 export interface AppAlert {
   id: string;
+  title?: string;
   message: string;
   eventId: string;
   createdAt: number;
