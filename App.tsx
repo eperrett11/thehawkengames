@@ -268,7 +268,7 @@ const Main: React.FC = () => {
           });
         });
 
-      if (totalPool >= 30) {
+      if (totalPool >= 25) {
         const optionStats = item.options.map((option) => {
           const optionPool = itemBets
             .filter((bet) => bet.optionId === option.id)
