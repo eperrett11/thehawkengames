@@ -81,10 +81,18 @@ export interface Bet {
   voided?: boolean;
 }
 
+export interface AppAlert {
+  id: string;
+  message: string;
+  eventId: string;
+  createdAt: number;
+}
+
 export interface TournamentState {
   players: Player[];
   teams: Team[];
   events: Event[];
   bettableItems: BettableItem[];
   bets: Bet[];
+  appAlerts: AppAlert[];
 }

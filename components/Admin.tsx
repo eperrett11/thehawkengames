@@ -4,7 +4,7 @@ import { Team, EventStatus, EventType, TournamentState, Event, BettableItem } fr
 import MatchupsAdmin from './MatchupsAdmin';
 
 const MAX_TEAM_SIZE = 5;
-type AdminView = 'Teams' | 'Sports' | 'Matchups' | 'Events' | 'BettingLocks' | 'Void' | 'RecentBets' | 'Bankroll' | 'Pins';
+type AdminView = 'Teams' | 'Sports' | 'Matchups' | 'Events' | 'BettingLocks' | 'Void' | 'RecentBets' | 'Alerts' | 'Bankroll' | 'Pins';
 
 type MatchupSideDraft = {
   teamId: string;
@@ -104,7 +104,7 @@ const createMatchupDrafts = (state: TournamentState): MatchupDraftMap => {
 };
 
 const Admin: React.FC = () => {
-  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidBettableItem, resetTournament } = useTournament();
+  const { state, updateTeams, settleItem, addFunds, adjustBankroll, resetPlayerPin, saveSportsSettings, setEventBettingLocked, saveMatchupSettings, voidBettableItem, createManualAlert, resetTournament } = useTournament();
   const [view, setView] = useState<AdminView>('Events');
   const [editingTeams, setEditingTeams] = useState<Team[]>(state.teams);
   const [selectedWinner, setSelectedWinner] = useState<{ itemId: string; optId: string } | null>(null);
@@ -117,6 +117,8 @@ const Admin: React.FC = () => {
   const [pinResetPlayerId, setPinResetPlayerId] = useState('');
   const [openScoreEventId, setOpenScoreEventId] = useState<string | null>(null);
   const [fundingPlayerId, setFundingPlayerId] = useState<string | null>(null);
+  const [manualAlertEventId, setManualAlertEventId] = useState('');
+  const [manualAlertMessage, setManualAlertMessage] = useState('');
 
   const isTeamsDirty = useMemo(() => (
     JSON.stringify(editingTeams.map((team) => ({ id: team.id, playerIds: team.playerIds }))) !==
@@ -428,6 +430,22 @@ const Admin: React.FC = () => {
 
     await voidBettableItem(item.id);
     alert('Bets voided and wagers returned.');
+  };
+
+  const handleSendManualAlert = async () => {
+    if (!manualAlertEventId) {
+      alert('Choose an event for the alert.');
+      return;
+    }
+
+    if (!manualAlertMessage.trim()) {
+      alert('Type an alert message.');
+      return;
+    }
+
+    await createManualAlert(manualAlertEventId, manualAlertMessage);
+    setManualAlertMessage('');
+    alert('Alert sent.');
   };
 
   const discardCurrentViewChanges = () => {
@@ -859,6 +877,7 @@ const Admin: React.FC = () => {
           <button onClick={() => void handleViewChange('Matchups')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Matchups' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Matchups</button>
           <button onClick={() => void handleViewChange('BettingLocks')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'BettingLocks' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Betting Locks</button>
           <button onClick={() => void handleViewChange('RecentBets')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'RecentBets' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Recent Bets</button>
+          <button onClick={() => void handleViewChange('Alerts')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Alerts' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Alerts</button>
           <button onClick={() => void handleViewChange('Void')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Void' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Void Bets</button>
           <button onClick={() => void handleViewChange('Bankroll')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Bankroll' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Bankroll</button>
           <button onClick={() => void handleViewChange('Pins')} className={`rounded py-3 text-xs font-bold uppercase tracking-widest ${view === 'Pins' ? 'bg-amber-500 text-black' : 'bg-slate-900 text-slate-500'}`}>Reset PIN</button>
@@ -1187,6 +1206,61 @@ const Admin: React.FC = () => {
           {recentBets.length === 0 ? (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm italic text-slate-500">No bets placed yet.</div>
           ) : null}
+        </div>
+      ) : view === 'Alerts' ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Manual Alert</div>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">Send a center popup to everyone in the app. The button on the alert will take them straight to the selected event.</p>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <select
+              value={manualAlertEventId}
+              onChange={(e) => setManualAlertEventId(e.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm font-black uppercase text-white"
+            >
+              <option value="">Choose Event</option>
+              {state.events.filter((event) => event.isVisible).map((event) => (
+                <option key={event.id} value={event.id}>
+                  Day {event.day} - {event.name}
+                </option>
+              ))}
+            </select>
+
+            <textarea
+              value={manualAlertMessage}
+              onChange={(e) => setManualAlertMessage(e.target.value)}
+              rows={4}
+              maxLength={140}
+              placeholder="Type alert message..."
+              className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600"
+            />
+
+            <button
+              type="button"
+              onClick={() => void handleSendManualAlert()}
+              className="w-full rounded-xl bg-amber-500 py-4 text-sm font-black uppercase tracking-[0.16em] text-black"
+            >
+              Send Alert
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Last Manual Alerts</div>
+            {(state.appAlerts || []).slice(0, 5).map((alert) => {
+              const event = state.events.find((entry) => entry.id === alert.eventId);
+              return (
+                <div key={alert.id} className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-300">{event?.name || 'Unknown Event'}</div>
+                  <div className="mt-1 text-sm font-bold text-white">{alert.message}</div>
+                </div>
+              );
+            })}
+            {(state.appAlerts || []).length === 0 ? (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm italic text-slate-500">No manual alerts sent yet.</div>
+            ) : null}
+          </div>
         </div>
       ) : view === 'Void' ? (
         <div className="space-y-4">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TournamentProvider, useTournament } from './store';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
@@ -17,6 +17,7 @@ const ADMIN_SESSION_KEY = 'hawken_admin_authed';
 const WELCOME_DISMISSED_PREFIX = 'hawken_welcome_dismissed_';
 const LIVE_WELCOME_DISMISSED_KEY = 'hawken_live_welcome_dismissed';
 const ACTIVE_TAB_PREFIX = 'hawken_active_tab_';
+const ALERT_DISMISSED_PREFIX = 'hawken_dismissed_alerts_';
 const PLAYER_TABS = ['Schedule', 'Teams', 'Leaderboard', 'Betting', 'Rules'];
 const LIVE_TABS = PLAYER_TABS;
 const PLAYER_CARD_PLACEHOLDER_SRC = '/images/player-card-placeholder.jpg';
@@ -40,6 +41,41 @@ const PLAYER_CARD_SRC: Record<string, string> = {
 };
 
 const getPlayerCardSrc = (name: string) => PLAYER_CARD_SRC[name] || PLAYER_CARD_SRC[name.split(' ')[0]] || PLAYER_CARD_PLACEHOLDER_SRC;
+
+type DisplayAlert = {
+  id: string;
+  title: string;
+  message: string;
+  eventId: string;
+  day: 1 | 2;
+  createdAt: number;
+};
+
+const formatAlertGameLabel = (eventName: string, itemLabel: string) => {
+  const gameMatch = itemLabel.match(/^Game\s+(\d+)$/i);
+  if (!gameMatch) return itemLabel;
+
+  const gameNumber = Number(gameMatch[1]);
+  if (['Pickleball', 'Spikeball', 'Beer Dye', 'Cornhole', 'ALT SPORT 2v2'].includes(eventName)) {
+    if (gameNumber >= 1 && gameNumber <= 4) return `Quarterfinal Game ${gameNumber}`;
+    if (gameNumber >= 5 && gameNumber <= 6) return `Semi Final Game ${gameNumber - 4}`;
+    if (gameNumber === 7) return 'Final Game';
+  }
+
+  if (['Volleyball', 'Soccer', 'Basketball', 'ALT SPORT 4v4'].includes(eventName)) {
+    if (gameNumber >= 1 && gameNumber <= 2) return `Semi Final Game ${gameNumber}`;
+    if (gameNumber === 3) return 'Final Game';
+  }
+
+  if (eventName === 'Baseball' && gameNumber === 1) return 'Final Game';
+  return itemLabel;
+};
+
+const cleanAlertOptionLabel = (label: string) => (
+  label
+    .replace(/^[A-Za-z]+ Team [AB]:\s*/i, '')
+    .replace(/\b(Blue|Green|Red|Purple) Team [AB]\b/gi, '$1 Team')
+);
 
 const AdminGate: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
   const [pin, setPin] = useState('');
@@ -98,6 +134,8 @@ const Main: React.FC = () => {
   const [showIntroCard, setShowIntroCard] = useState(false);
   const [isIntroCardOpen, setIsIntroCardOpen] = useState(false);
   const [rulesCategory, setRulesCategory] = useState<'Leaderboard' | 'Tournament' | 'Betting' | 'Sports'>('Leaderboard');
+  const [scheduleFocus, setScheduleFocus] = useState<{ eventId: string; day: 1 | 2; nonce: number } | null>(null);
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<string[]>([]);
 
   useEffect(() => {
     const syncLocation = () => setPathname(window.location.pathname);
@@ -161,8 +199,112 @@ const Main: React.FC = () => {
 
   const isAdminPath = pathname === '/admin';
   const isLivePath = pathname === '/live';
+  const alertAudienceKey = isLivePath ? 'live' : currentUser?.id || 'guest';
+  const alertStorageKey = `${ALERT_DISMISSED_PREFIX}${alertAudienceKey}`;
+
+  useEffect(() => {
+    try {
+      setDismissedAlertIds(JSON.parse(localStorage.getItem(alertStorageKey) || '[]'));
+    } catch {
+      setDismissedAlertIds([]);
+    }
+  }, [alertStorageKey]);
+
+  const appAlerts = useMemo<DisplayAlert[]>(() => {
+    const visibleEvents = state.events.filter((event) => event.isVisible);
+    const visibleEventMap = new Map<string, (typeof state.events)[number]>(visibleEvents.map((event) => [event.id, event]));
+    const alerts: DisplayAlert[] = [];
+
+    (state.appAlerts || []).forEach((manualAlert) => {
+      const event = visibleEventMap.get(manualAlert.eventId);
+      if (!event) return;
+
+      alerts.push({
+        id: manualAlert.id,
+        title: 'Commissioner Alert',
+        message: manualAlert.message,
+        eventId: event.id,
+        day: event.day,
+        createdAt: manualAlert.createdAt
+      });
+    });
+
+    state.bettableItems.forEach((item) => {
+      const event = visibleEventMap.get(item.eventId);
+      if (!event || item.status !== 'OPEN' || item.bettingLocked || item.options.length < 2) return;
+
+      const itemBets = state.bets.filter((bet) => bet.bettableItemId === item.id && !bet.refunded && !bet.voided);
+      const totalPool = itemBets.reduce((sum, bet) => sum + bet.amount, 0);
+      const gameLabel = formatAlertGameLabel(event.name, item.label);
+      const eventLabel = `${event.name} - ${gameLabel}`;
+      const latestBetTime = itemBets.reduce((latest, bet) => Math.max(latest, bet.timestamp), 0);
+
+      if (totalPool >= 50) {
+        alerts.push({
+          id: `auto-high-pot-${item.id}`,
+          title: 'High Pot Alert',
+          message: `${eventLabel} has a $${totalPool.toFixed(0)} pot building.`,
+          eventId: event.id,
+          day: event.day,
+          createdAt: latestBetTime || Date.now()
+        });
+      }
+
+      itemBets
+        .filter((bet) => bet.amount >= 20)
+        .forEach((bet) => {
+          alerts.push({
+            id: `auto-big-bet-${bet.id}`,
+            title: 'Big Bet Alert',
+            message: `A $${bet.amount.toFixed(0)} bet just hit ${eventLabel}.`,
+            eventId: event.id,
+            day: event.day,
+            createdAt: bet.timestamp
+          });
+        });
+
+      if (totalPool >= 30) {
+        const optionStats = item.options.map((option) => {
+          const optionPool = itemBets
+            .filter((bet) => bet.optionId === option.id)
+            .reduce((sum, bet) => sum + bet.amount, 0);
+          return {
+            option,
+            optionPool,
+            percentage: totalPool > 0 ? (optionPool / totalPool) * 100 : 0
+          };
+        });
+        const lowSide = optionStats.sort((a, b) => a.percentage - b.percentage)[0];
+
+        if (lowSide && lowSide.percentage < 25) {
+          alerts.push({
+            id: `auto-underdog-${item.id}-${lowSide.option.id}`,
+            title: 'Good Odds Alert',
+            message: `${cleanAlertOptionLabel(lowSide.option.label)} has only ${lowSide.percentage.toFixed(0)}% of the ${eventLabel} pot.`,
+            eventId: event.id,
+            day: event.day,
+            createdAt: latestBetTime || Date.now()
+          });
+        }
+      }
+    });
+
+    return alerts.sort((a, b) => b.createdAt - a.createdAt);
+  }, [state.events, state.bettableItems, state.bets, state.appAlerts]);
+
+  const dismissAlert = (alertId: string) => {
+    setDismissedAlertIds((current) => {
+      const next = [...new Set([...current, alertId])];
+      localStorage.setItem(alertStorageKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const isCommish = isAdminPath && isAdminAuthed;
   const isAuthScreen = !currentUser && !isAdminPath && !isLivePath;
+  const activeAppAlert = !isAdminPath && !isAuthScreen && !showWelcome && !showIntroCard
+    ? appAlerts.find((alert) => !dismissedAlertIds.includes(alert.id))
+    : undefined;
 
   if (isLoading) return (
     <div className="h-screen flex items-center justify-center bg-slate-950 text-slate-400 px-4">
@@ -212,7 +354,7 @@ const Main: React.FC = () => {
     if (!currentUser && !isLivePath) return <Login />;
 
     switch (activeTab) {
-      case 'Schedule': return <Schedule onShowRules={handleShowRules} />;
+      case 'Schedule': return <Schedule onShowRules={handleShowRules} focusEvent={scheduleFocus} />;
       case 'Teams': return <Teams />;
       case 'Leaderboard': return <Leaderboard />;
       case 'Betting': return <MyBets />;
@@ -440,6 +582,39 @@ const Main: React.FC = () => {
 
       {(currentUser || isLivePath) && !isCommish && !isAdminPath && (
         <Navbar activeTab={activeTab} setActiveTab={setActiveTab} tabs={isLivePath ? LIVE_TABS : PLAYER_TABS} />
+      )}
+
+      {activeAppAlert && (
+        <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[28px] border border-amber-400/30 bg-[linear-gradient(145deg,rgba(15,23,42,0.98)_0%,rgba(2,6,23,0.98)_100%)] p-5 text-center shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-400 text-xl font-black text-black">
+              !
+            </div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">{activeAppAlert.title}</div>
+            <p className="mt-3 text-lg font-black uppercase leading-tight text-white">{activeAppAlert.message}</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => dismissAlert(activeAppAlert.id)}
+                className="rounded-2xl border border-slate-700 bg-slate-950 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  dismissAlert(activeAppAlert.id);
+                  setSelectedRuleSport(null);
+                  setActiveTab('Schedule');
+                  setScheduleFocus({ eventId: activeAppAlert.eventId, day: activeAppAlert.day, nonce: Date.now() });
+                }}
+                className="rounded-2xl bg-white py-3 text-[10px] font-black uppercase tracking-[0.16em] text-black"
+              >
+                View Event
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showWelcome && (currentUser || isLivePath) && !isCommish && !isAdminPath && (

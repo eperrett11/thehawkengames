@@ -8,6 +8,7 @@ import BettingPanel from './BettingPanel';
 interface ScheduleProps {
   onShowRules: (sport: string) => void;
   readOnly?: boolean;
+  focusEvent?: { eventId: string; day: 1 | 2; nonce: number } | null;
 }
 
 const PAIRED_ROUNDS = ['Quarterfinal', 'Semifinal', 'Final'];
@@ -35,7 +36,7 @@ const formatBetLabel = (eventName: string, itemLabel: string) => {
   return itemLabel;
 };
 
-const Schedule: React.FC<ScheduleProps> = ({ onShowRules, readOnly = false }) => {
+const Schedule: React.FC<ScheduleProps> = ({ onShowRules, readOnly = false, focusEvent = null }) => {
   const { state, currentUser } = useTournament();
   const [activeDay, setActiveDay] = useState<1 | 2>(1);
   const [openEventIds, setOpenEventIds] = useState<Set<string>>(new Set());
@@ -44,6 +45,23 @@ const Schedule: React.FC<ScheduleProps> = ({ onShowRules, readOnly = false }) =>
   const eventCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const dayEvents = state.events.filter((e) => e.day === activeDay && e.isVisible);
+
+  useEffect(() => {
+    if (!focusEvent) return;
+
+    setActiveDay(focusEvent.day);
+    setOpenEventIds((current) => {
+      const next = new Set(current);
+      next.add(focusEvent.eventId);
+      return next;
+    });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        eventCardRefs.current[focusEvent.eventId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }, [focusEvent?.nonce]);
 
   useEffect(() => {
     loadIcons([
