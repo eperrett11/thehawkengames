@@ -18,6 +18,10 @@ const WELCOME_DISMISSED_PREFIX = 'hawken_welcome_dismissed_';
 const LIVE_WELCOME_DISMISSED_KEY = 'hawken_live_welcome_dismissed';
 const ACTIVE_TAB_PREFIX = 'hawken_active_tab_';
 const ALERT_DISMISSED_PREFIX = 'hawken_dismissed_alerts_';
+const AUTOMATIC_ALERTS_LIVE_AT = 1778775552524;
+const ALLOWED_EXISTING_AUTOMATIC_ALERT_IDS = new Set([
+  'auto-underdog-empty-item-e2-1-t1-pair-e2-b'
+]);
 const PLAYER_TABS = ['Schedule', 'Teams', 'Leaderboard', 'Betting', 'Rules'];
 const LIVE_TABS = PLAYER_TABS;
 const PLAYER_CARD_PLACEHOLDER_SRC = '/images/player-card-placeholder.jpg';
@@ -331,7 +335,13 @@ const Main: React.FC = () => {
       }
     });
 
-    return alerts.sort((a, b) => b.createdAt - a.createdAt);
+    return alerts
+      .filter((alert) => (
+        !alert.id.startsWith('auto-')
+        || alert.createdAt >= AUTOMATIC_ALERTS_LIVE_AT
+        || ALLOWED_EXISTING_AUTOMATIC_ALERT_IDS.has(alert.id)
+      ))
+      .sort((a, b) => b.createdAt - a.createdAt);
   }, [state.events, state.bettableItems, state.bets, state.appAlerts, currentUser?.id]);
 
   const dismissAlert = (alertId: string) => {
