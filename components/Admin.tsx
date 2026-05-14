@@ -1145,7 +1145,7 @@ const Admin: React.FC = () => {
 
           <div className="space-y-3">
             {recentBets.map(({ bet, playerName, eventName, gameLabel, matchupLabel, pickLabel }) => {
-              const placedAt = new Date(bet.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+              const placedAt = new Date(bet.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
               const statusLabel = bet.voided ? 'Void' : bet.refunded ? 'Refunded' : bet.payout !== undefined ? 'Settled' : 'Active';
 
               return (
