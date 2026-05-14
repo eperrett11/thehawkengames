@@ -293,6 +293,29 @@ const Main: React.FC = () => {
           });
         }
       }
+
+      if (totalPool >= 15) {
+        const optionStats = item.options.map((option) => {
+          const optionPool = itemBets
+            .filter((bet) => bet.optionId === option.id)
+            .reduce((sum, bet) => sum + bet.amount, 0);
+          return { option, optionPool };
+        });
+
+        optionStats
+          .filter((entry) => entry.optionPool === 0)
+          .forEach((emptySide) => {
+            const projectedPayout = totalPool + 5;
+            alerts.push({
+              id: `auto-underdog-empty-${item.id}-${emptySide.option.id}`,
+              title: 'Underdog Alert',
+              message: `No one has bet on ${formatAlertSideLabel(emptySide.option.label)} in ${eventLabel} yet. A $5 bet would currently pay out $${projectedPayout.toFixed(0)} if they win.`,
+              eventId: event.id,
+              day: event.day,
+              createdAt: latestBetTime || Date.now()
+            });
+          });
+      }
     });
 
     return alerts.sort((a, b) => b.createdAt - a.createdAt);
