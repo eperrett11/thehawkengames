@@ -71,11 +71,11 @@ const formatAlertGameLabel = (eventName: string, itemLabel: string) => {
   return itemLabel;
 };
 
-const cleanAlertOptionLabel = (label: string) => (
-  label
-    .replace(/^[A-Za-z]+ Team [AB]:\s*/i, '')
-    .replace(/\b(Blue|Green|Red|Purple) Team [AB]\b/gi, '$1 Team')
-);
+const formatAlertSideLabel = (label: string) => {
+  const pairedMatch = label.match(/^([A-Za-z]+ Team [AB]):\s*(.+)$/i);
+  if (pairedMatch) return `${pairedMatch[1]} (${pairedMatch[2]})`;
+  return label;
+};
 
 const AdminGate: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
   const [pin, setPin] = useState('');
@@ -258,7 +258,7 @@ const Main: React.FC = () => {
           alerts.push({
             id: `auto-big-bet-${bet.id}`,
             title: 'Big Bet Alert',
-            message: `A $${bet.amount.toFixed(0)} bet just hit ${eventLabel}.`,
+            message: `Someone just placed a $${bet.amount.toFixed(0)} bet on ${eventLabel}.`,
             eventId: event.id,
             day: event.day,
             createdAt: bet.timestamp
@@ -278,11 +278,12 @@ const Main: React.FC = () => {
         });
         const lowSide = optionStats.sort((a, b) => a.percentage - b.percentage)[0];
 
-        if (lowSide && lowSide.percentage < 25) {
+        if (lowSide && lowSide.percentage < 25 && lowSide.optionPool > 0) {
+          const payoutReturn = (totalPool / lowSide.optionPool) * 100;
           alerts.push({
             id: `auto-underdog-${item.id}-${lowSide.option.id}`,
-            title: 'Good Odds Alert',
-            message: `${cleanAlertOptionLabel(lowSide.option.label)} has only ${lowSide.percentage.toFixed(0)}% of the ${eventLabel} pot.`,
+            title: 'High Odds Alert',
+            message: `${formatAlertSideLabel(lowSide.option.label)} only has ${lowSide.percentage.toFixed(0)}% of the bets. Betting on the underdog pays out a ${payoutReturn.toFixed(0)}% return.`,
             eventId: event.id,
             day: event.day,
             createdAt: latestBetTime || Date.now()
